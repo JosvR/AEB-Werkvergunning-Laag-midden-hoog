@@ -1,8 +1,15 @@
 # AEB — Laag, midden of hoog risico?
 
-**Versie 1.0.0 · 3 november 2026.** Tien nieuwe praktijkcases voor de AEB-training werkvergunningen. Deelnemers slepen een samenvatting naar **Laag**, **Midden** of **Hoog**. Aantikken, categorieknoppen en toetsenbord werken ook. Vijf cases hebben een vergrootbare schematische illustratie. De startpagina gebruikt een foto van de AEB-website en de logo’s van AEB en Deltalinqs Training & Services.
+**Versie 1.0.1 · 3 november 2026.** Tien nieuwe praktijkcases voor de AEB-training werkvergunningen. Deelnemers slepen een samenvatting naar **Laag**, **Midden** of **Hoog**. Aantikken, categorieknoppen en toetsenbord werken ook. Vijf cases hebben een vergrootbare schematische illustratie. De startpagina gebruikt een foto van de AEB-website en de logo’s van AEB en Deltalinqs Training & Services.
 
 De complete website staat in **`dist/`**, met `index.html` direct in die map. **U hoeft niets te installeren of te bouwen.** Geen database, eigen server, serverfuncties of persoonlijke API-sleutels.
+
+## Hersteld in versie 1.0.1
+
+- Slepen op telefoons gebruikt nu eigen aanraakbediening. Paginaschuiven en tekstselectie nemen de beweging van het kaartje niet over.
+- Het kaartje volgt de vinger boven de pagina; de doelvakken blijven op hun plek. De categorie wordt vastgesteld op de werkelijke loslaatpositie.
+- Ook snel loslaten, opnieuw verplaatsen en automatisch doorschuiven bij de schermrand zijn afgedekt. Een afgebroken beweging verandert de eerdere keuze niet.
+- Het hele categorievak is aantikbaar. Dezelfde aanraakbediening wordt gebruikt bij zelfstandig oefenen en bij deelname aan een groepssessie.
 
 ## Publiceren via GitHub en Netlify
 
@@ -20,7 +27,7 @@ De complete website staat in **`dist/`**, met `index.html` direct in die map. **
 
 `netlify.toml` legt de lege buildopdracht en publicatiemap al vast. Wanneer de repository aan Netlify gekoppeld is, publiceert Netlify nieuwe commits op `main` automatisch, tenzij automatisch publiceren daar is uitgezet.
 
-Het bestand `downloads/AEB-Laag-midden-hoog-v1.0.0.zip` bevat deze korte handleiding, `netlify.toml` en de complete `dist/`. Bij handmatige publicatie uploadt u alleen de uitgepakte map `dist`.
+Het bestand `downloads/AEB-Laag-midden-hoog-v1.0.1.zip` bevat deze korte handleiding, `netlify.toml` en de complete `dist/`. Bij handmatige publicatie uploadt u alleen de uitgepakte map `dist`.
 
 ## Gebruik in de presentatie
 
@@ -80,3 +87,5 @@ De broncode is beschikbaar voor volgende wijzigingen. Alleen de ontwikkelaar geb
 ## Verificatie
 
 TypeScript, productiebuild en tests voor tien categorieën, scores, tijdelijke voortgang, twee deelnemers, ontvangstbevestiging, verborgen antwoorden, nabespreking, herstel, payloadvalidatie en wissen zijn gecontroleerd. De transporttests gebruiken een gesimuleerde verbinding en bewijzen geen bereikbaarheid door een bedrijfsfirewall. De browsercontrole van de gebouwde `dist` omvat sleepbediening, alle tien cases, afronding, procedurefeedback en de trainerinterface. Bij de echte netwerkproef werd PeerJS Cloud bereikt en de sessie-QR getoond, maar kwam vanuit de testbrowser geen WebRTC-gegevensverbinding tot stand. De deelnemer kreeg na de timeout een afsluitmelding en zijn tijdelijke gegevens werden gewist. Live deelname is hiermee nog niet op Netlify of met echte telefoons bevestigd. Controleer na publicatie op de leslocatie: twee namen zichtbaar, twee verbonden, ontvangen categorieën in de tabel, nabespreking volgen, antwoorden tonen/verbergen, volgende case opnieuw verborgen en afsluiten/wissen op alle apparaten.
+
+Aanvullende verificatie 1.0.1: regressietests voor de aanraakbediening controleren preventie van paginaschuiven, echte eindcoördinaten, snel loslaten, herhaald verplaatsen, een tweede vinger, annuleren en niet-actieve bediening.

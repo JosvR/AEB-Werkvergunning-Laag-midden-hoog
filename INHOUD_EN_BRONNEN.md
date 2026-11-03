@@ -1,4 +1,4 @@
-# Inhoud en antwoordoverzicht — AEB risico-oefenapp 1.0.0
+# Inhoud en antwoordoverzicht — AEB risico-oefenapp 1.0.1
 
 3 november 2026. Tien nieuwe formatieve cases, geen reproductie van examens A/B. Beoogd niveau: toepassen en analyseren. Twee laag, vijf midden en drie hoog. Het accent ligt op het onderbouwen van midden versus hoog.
 
