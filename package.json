@@ -1,6 +1,6 @@
 {
   "name": "aeb-werkvergunning-laag-midden-hoog",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "Tien AEB-praktijkcases: laag, midden of hoog risico, met tijdelijke live groepssessies",
@@ -10,7 +10,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "tsc --noEmit",
-    "test": "node tests/quiz-core.mjs && node --test tests/live-session.mjs && node tests/static-contract.mjs && node --test tests/touch-drag.mjs"
+    "test": "node tests/quiz-core.mjs && node --test tests/live-session.mjs && node tests/static-contract.mjs && node tests/category-buttons.mjs"
   },
   "dependencies": {
     "lucide-react": "1.31.0",

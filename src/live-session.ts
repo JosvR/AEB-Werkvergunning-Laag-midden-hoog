@@ -1,5 +1,5 @@
 import questionData from './questions.json';
-import { PROTOCOL, PEER_PREFIX, HEARTBEAT_MS, STALE_MS, LOST_MS, MAX_SESSION_MS, MAX_PARTICIPANTS, newRoomCode, newClientId, normalizeCode, cleanName, validEnvelope, validateProgress } from './live-protocol.mjs';
+import { PROTOCOL, PEER_PREFIX, HEARTBEAT_MS, STALE_MS, LOST_MS, MAX_SESSION_MS, MAX_PARTICIPANTS, RECONNECT_MS, newRoomCode, newClientId, normalizeCode, cleanName, validEnvelope, validateProgress } from './live-protocol.mjs';
 
 export type Progress = { answers: Record<number, number>; revision: number; current: number; finished: boolean };
 export type Participant = Progress & { id: string; name: string; online: boolean; lastSeen: number };
@@ -38,13 +38,17 @@ export class TrainerSession {
   private startedAt = 0;
   private epoch = 0;
   private closed = false;
+  private lastTickAt = 0;
+  private recoveryUntil = 0;
+  private rebuilding = false;
+  private retryAt = 0;
   constructor(private changed: (value: HostSnapshot) => void, private factory: PeerFactory = peerFactory) {}
   private emit() { this.changed({ ...this.snapshot, participants: [...this.records.values()].map(p => ({ ...p, answers: { ...p.answers } })) }); }
   get active() { return this.snapshot.active; }
   async start() {
     if (this.snapshot.active || this.closed) return;
     const epoch = ++this.epoch;
-    this.startedAt = Date.now();
+    this.startedAt = this.lastTickAt = Date.now();
     this.snapshot = { ...emptyHost(), active: true, status: 'connecting', code: newRoomCode() };
     this.emit();
     this.startTimer = setTimeout(() => { if (this.snapshot.status === 'connecting') { this.snapshot.status = 'error'; this.snapshot.error = networkError(); this.emit(); } }, 20000);
@@ -54,11 +58,14 @@ export class TrainerSession {
       this.peer = peer;
       peer.on('open', () => { if (this.closed) return; clearTimeout(this.startTimer); this.snapshot.status = 'ready'; this.snapshot.error = ''; this.emit(); });
       peer.on('connection', (connection: Connection) => this.accept(connection));
+      peer.on('close', () => { if (!this.closed) { this.snapshot.status = 'reconnecting'; this.emit(); } });
       peer.on('disconnected', () => { if (!this.closed) { this.snapshot.status = 'reconnecting'; this.snapshot.error = 'Nieuwe deelnemers verbinden zodra internet terug is. Bestaande verbindingen kunnen blijven werken.'; this.emit(); } });
       peer.on('error', (error: { type?: string }) => {
         if (this.closed) return;
-        this.snapshot.status = 'error';
-        this.snapshot.error = error.type === 'unavailable-id' ? 'Deze sessiecode is al in gebruik. Sluit deze sessie af en start opnieuw.' : networkError(); this.emit();
+        // A failed connection from one participant is not a failed class session.
+        if (error.type === 'peer-unavailable' || error.type === 'webrtc') return;
+        this.snapshot.status = 'reconnecting';
+        this.snapshot.error = error.type === 'unavailable-id' ? 'De sessieverbinding wordt opnieuw opgebouwd. Houd deze pagina open.' : networkError(); this.emit();
       });
       this.heartbeat = setInterval(() => this.tick(), HEARTBEAT_MS);
     } catch { if (!this.closed) { this.snapshot.status = 'error'; this.snapshot.error = networkError(); this.emit(); } }
@@ -121,14 +128,43 @@ export class TrainerSession {
     this.snapshot = { ...this.snapshot, phase: 'review', question, revealed }; this.broadcastReview();
   }
   resume() { if (!this.closed) { this.snapshot = { ...this.snapshot, phase: 'practice', revealed: false }; this.broadcastReview(); } }
+  // Called on focus, online, pageshow and browser resume, without ending the lesson.
+  resumeConnection() {
+    if (this.closed || !this.snapshot.active) return;
+    this.recoveryUntil = Date.now() + STALE_MS;
+    this.lastTickAt = Date.now();
+    for (const connection of this.connections.values()) send(connection, { type: 'ping' });
+    this.recoverPeer();
+  }
+  private recoverPeer() {
+    if (this.closed || this.rebuilding || Date.now() < this.retryAt) return;
+    if (this.peer && !this.peer.destroyed) {
+      if (this.peer.disconnected) { this.retryAt = Date.now() + RECONNECT_MS; try { this.peer.reconnect(); } catch { /* Retry later. */ } }
+      return;
+    }
+    this.rebuilding = true; this.retryAt = Date.now() + RECONNECT_MS;
+    const epoch = this.epoch;
+    void this.factory(PEER_PREFIX + this.snapshot.code).then(peer => {
+      if (this.closed || epoch !== this.epoch) { peer.destroy(); return; }
+      this.peer = peer;
+      peer.on('open', () => { if (!this.closed && this.peer === peer) { this.snapshot.status = 'ready'; this.snapshot.error = ''; this.emit(); } });
+      peer.on('connection', (connection: Connection) => { if (!this.closed && this.peer === peer) this.accept(connection); else connection.close(); });
+      peer.on('disconnected', () => { if (!this.closed && this.peer === peer) { this.snapshot.status = 'reconnecting'; this.emit(); } });
+      peer.on('error', (error: { type?: string }) => { if (!this.closed && this.peer === peer && !['peer-unavailable', 'webrtc'].includes(error.type || '')) { this.snapshot.status = 'reconnecting'; this.snapshot.error = networkError(); this.emit(); } });
+    }).catch(() => { if (!this.closed) { this.snapshot.status = 'reconnecting'; this.snapshot.error = networkError(); this.emit(); } }).finally(() => { this.rebuilding = false; });
+  }
   private tick() {
     if (this.closed) return;
+    const now = Date.now();
+    // On return from a suspended tab, probe first; do not expire every connection before queued replies run.
+    if (now - this.lastTickAt > STALE_MS) this.recoveryUntil = now + STALE_MS;
+    this.lastTickAt = now;
     if (Date.now() - this.startedAt > MAX_SESSION_MS) { this.close(); return; }
-    if (this.peer?.disconnected && !this.peer.destroyed) { try { this.peer.reconnect(); } catch { /* Next heartbeat retries. */ } }
+    this.recoverPeer();
     let stale = false;
     for (const [id, connection] of this.connections) {
       const record = this.records.get(id)!;
-      if (Date.now() - record.lastSeen > STALE_MS) { record.online = false; this.connections.delete(id); connection.close(); stale = true; }
+      if (Date.now() > this.recoveryUntil && Date.now() - record.lastSeen > STALE_MS) { record.online = false; this.connections.delete(id); connection.close(); stale = true; }
       else send(connection, { type: 'ping' });
     }
     if (stale) this.emit();
@@ -160,17 +196,22 @@ export class LearnerSession {
   private startedAt = 0;
   private disposed = false;
   private welcomed = false;
+  private creatingPeer = false;
+  private lastTickAt = 0;
+  private resumeUntil = 0;
   private epoch = 0;
   constructor(private code: string, private changed: (value: GuestSnapshot) => void, private factory: PeerFactory = peerFactory) {}
   private emit() { this.changed({ ...this.snapshot, progress: cloneProgress(this.snapshot.progress) }); }
   async start(name: string) {
     if (!normalizeCode(this.code) || !cleanName(name) || this.disposed || this.snapshot.status !== 'idle') return;
     this.snapshot = { ...emptyGuest(), status: 'connecting', name: cleanName(name) };
-    this.startedAt = this.lastSeen = Date.now(); this.emit();
+    this.startedAt = this.lastSeen = this.lastTickAt = Date.now(); this.emit();
     this.timer = setInterval(() => this.tick(), HEARTBEAT_MS);
     await this.createPeer();
   }
   private async createPeer() {
+    if (this.creatingPeer || this.disposed) return;
+    this.creatingPeer = true;
     const epoch = ++this.epoch;
     try {
       const peer = await this.factory();
@@ -183,9 +224,11 @@ export class LearnerSession {
         if (!this.connection?.open) { this.snapshot.status = 'reconnecting'; this.snapshot.error = 'Geen verbinding met de trainer. We proberen opnieuw; houd dit scherm open.'; this.emit(); }
       });
     } catch { if (!this.disposed) { this.snapshot.status = 'reconnecting'; this.snapshot.error = networkError(); this.emit(); } }
+    finally { this.creatingPeer = false; }
   }
   private connect() {
     if (this.disposed || !this.peer || this.peer.destroyed || this.peer.disconnected) return;
+    if (this.connection?.open && this.welcomed) return;
     this.attemptAt = Date.now(); this.welcomed = false;
     let connection: Connection;
     try { connection = this.peer.connect(PEER_PREFIX + normalizeCode(this.code), { reliable: true, serialization: 'json', label: PROTOCOL }); }
@@ -211,30 +254,42 @@ export class LearnerSession {
     });
     const disconnected = () => {
       if (this.disposed || this.connection !== connection) return;
-      this.welcomed = false; this.snapshot.status = 'reconnecting';
+      this.welcomed = false; this.attemptAt = Date.now() - RECONNECT_MS; this.snapshot.status = 'reconnecting';
       this.snapshot.error = 'Verbinding onderbroken. Je keuzes blijven tijdelijk op je telefoon en worden na herstel doorgestuurd.'; this.emit();
     };
     connection.on('close', disconnected); connection.on('error', () => { connection.close(); disconnected(); });
   }
   update(value: Omit<Progress, 'revision'>) {
-    if (this.disposed || this.snapshot.phase !== 'practice' || !this.welcomed) return;
+    if (this.disposed || this.snapshot.phase !== 'practice' || this.snapshot.status === 'idle') return;
     const progress = validateProgress({ ...value, revision: this.snapshot.progress.revision + 1 }, questionData);
     if (!progress) return;
     this.snapshot.progress = progress; this.emit(); this.flush();
   }
   private flush() { if (this.connection && this.welcomed) send(this.connection, { type: 'update', progress: cloneProgress(this.snapshot.progress) }); }
+  resumeConnection() {
+    if (this.disposed) return;
+    // Still enforce an expired lease before granting a short opportunity to reconnect.
+    if (Date.now() - this.lastSeen > LOST_MS || Date.now() - this.startedAt > MAX_SESSION_MS) { this.tick(); return; }
+    this.resumeUntil = Date.now() + STALE_MS;
+    this.lastTickAt = Date.now();
+    if (this.connection?.open && this.welcomed) { send(this.connection, { type: 'ping' }); this.flush(); }
+    else { this.attemptAt = Date.now() - RECONNECT_MS - 1; this.tick(); }
+  }
   private tick() {
     if (this.disposed) return;
+    const now = Date.now();
+    if (now - this.lastTickAt > STALE_MS && now - this.lastSeen < LOST_MS) this.resumeUntil = now + STALE_MS;
+    this.lastTickAt = now;
     if (Date.now() - this.lastSeen > LOST_MS || Date.now() - this.startedAt > MAX_SESSION_MS) {
-      this.dispose('error', 'De trainer is niet meer bereikbaar. Deze deelname is afgesloten en je tijdelijke gegevens zijn gewist. Vraag je trainer om een nieuwe sessie-QR.'); return;
+      this.dispose('error', 'Er was tien minuten geen contact met de trainer, of de lesduur is verstreken. Deze deelname is afgesloten en je tijdelijke gegevens zijn gewist. Vraag de trainer om een nieuwe sessie-QR.'); return;
     }
     if (this.peer?.disconnected && !this.peer.destroyed) { try { this.peer.reconnect(); } catch { /* Retry next heartbeat. */ } }
     if (!this.peer || this.peer.destroyed) { void this.createPeer(); return; }
     if (this.connection?.open && this.welcomed) {
-      if (Date.now() - this.lastSeen > STALE_MS) { this.connection.close(); return; }
+      if (Date.now() > this.resumeUntil && Date.now() - this.lastSeen > STALE_MS) { this.connection.close(); return; }
       send(this.connection, { type: 'ping' });
       if (this.snapshot.acknowledged !== this.snapshot.progress.revision) this.flush();
-    } else if (Date.now() - this.attemptAt > 30000) this.connect();
+    } else if (Date.now() - this.attemptAt >= RECONNECT_MS) this.connect();
   }
   dispose(status: 'idle' | 'closed' | 'error' = 'idle', error = '') {
     if (this.disposed) return;

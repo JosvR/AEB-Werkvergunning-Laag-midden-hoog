@@ -6,3 +6,14 @@ body{font-family:Arial,Helvetica,sans-serif}button:focus-visible,a:focus-visible
 
 /* v1.0.1: fixed drag preview leaves source and drop-zone geometry unchanged. */
 .case-card.is-sortable{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}.case-card.is-readonly{cursor:default;touch-action:auto;user-select:text}.case-card.drag-source{opacity:.35}.case-drag-preview{position:fixed;z-index:2147483647;pointer-events:none!important;touch-action:none;box-shadow:0 16px 45px #19197340;border-color:var(--navy);margin:0;cursor:grabbing}.risk-zone{cursor:pointer}.risk-zone:has(.risk-target:disabled){cursor:default}.risk-zone.drop-hover{background:#dfdff2;border:3px solid var(--navy)}.case-card:focus-visible{outline:3px solid #8b6bb4;outline-offset:3px}
+
+/* v1.1.0: plain, touch-friendly category buttons; no dragging or touch interception. */
+.risk-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
+.risk-choice{display:flex;align-items:center;justify-content:center;gap:10px;min-height:64px;padding:18px 12px;border:2px solid #b7b8cf;border-radius:12px;background:#fff;color:var(--navy);font:inherit;cursor:pointer;touch-action:manipulation}
+.risk-choice strong{font-size:22px}.risk-choice:hover:not(:disabled){border-color:var(--navy);background:#f0eff8}
+.risk-choice.selected{background:var(--navy);border-color:var(--navy);color:#fff}
+.risk-choice:focus-visible{outline:3px solid #8b6bb4;outline-offset:3px}
+.risk-choice:disabled{cursor:default;opacity:.75}.risk-choice.revealed-correct{background:#e5efd1;border-color:#6a9140;color:#263c18}
+.risk-choice.revealed-wrong{border-color:#b40032}.choice-help,.choice-status{color:#65677e;line-height:1.5}
+.risk-choice .selection-indicator{font-size:12px}.case-card.is-readonly{touch-action:auto;user-select:text}
+@media(max-width:600px){.risk-choices{gap:8px}.risk-choice{flex-direction:column;min-height:72px;padding:12px 6px}.risk-choice strong{font-size:20px}.risk-choice .selection-indicator{font-size:11px}}

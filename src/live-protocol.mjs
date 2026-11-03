@@ -1,8 +1,10 @@
 export const PROTOCOL = 'aeb-risico-live-1';
 export const PEER_PREFIX = 'aeb-risico-v1-';
 export const HEARTBEAT_MS = 5000;
-export const STALE_MS = 25000;
-export const LOST_MS = 60000;
+export const STALE_MS = 90000;
+// Short interruptions do not erase a participant's answers.
+export const LOST_MS = 10 * 60 * 1000;
+export const RECONNECT_MS = 5000;
 export const MAX_SESSION_MS = 8 * 60 * 60 * 1000;
 export const MAX_PARTICIPANTS = 80;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

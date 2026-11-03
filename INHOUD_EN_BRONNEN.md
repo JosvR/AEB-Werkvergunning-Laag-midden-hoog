@@ -1,4 +1,4 @@
-# Inhoud en antwoordoverzicht — AEB risico-oefenapp 1.0.1
+# Inhoud en antwoordoverzicht — AEB risico-oefenapp 1.1.0
 
 3 november 2026. Tien nieuwe formatieve cases, geen reproductie van examens A/B. Beoogd niveau: toepassen en analyseren. Twee laag, vijf midden en drie hoog. Het accent ligt op het onderbouwen van midden versus hoog.
 
@@ -182,3 +182,7 @@ Een kleine flexibele koppeling van een doseerwaterpomp moet met een nieuw type h
 ## Aansluiting bij de examens
 
 De cases bereiden voor op het onderbouwen van classificaties, herkennen van onvoldoende dekking door een instructie, installatie-/omgevingsinvloeden en het verschil tussen een TRA en een risicocategorie. Situaties en formuleringen zijn nieuw. De specifieke deskundigencorrecties over ondertekening na de LMRA en de ontvanger bij alarm zijn geen onderwerp van deze oefening; daarover worden dus geen afwijkende procedureteksten geciteerd.
+
+## Technische correctie 1.1.0 van 3 november 2026
+
+De tien cases, categorieën, procedurecitaten en inhoudelijke toelichtingen zijn ongewijzigd. Deelnemers kiezen met drie knoppen Laag, Midden en Hoog; de sleepbediening is verwijderd. Groepsverbindingen herstellen bij terugkeer naar de pagina en bij internetherstel. Korte uitval blokkeert het kiezen niet; ontvangst blijft afhankelijk van een bevestiging door de trainer. De verlies-timeout bedraagt tien minuten. Expliciet afsluiten/wissen en de maximale sessieduur van acht uur blijven gelden. Namen en groepsantwoorden staan uitsluitend in werkgeheugen.

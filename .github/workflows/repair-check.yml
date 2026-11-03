@@ -1,0 +1,30 @@
+name: Verify static AEB repair
+on:
+  push:
+    branches: ["fix/lmh-buttons-recovery-20261103"]
+permissions:
+  contents: write
+jobs:
+  verify:
+    if: "!contains(github.event.head_commit.message, '[built-static]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+      - run: npm test
+      - name: Update downloadable static bundle
+        run: |
+          python3 -c 'import json, pathlib, zipfile; v=json.loads(pathlib.Path("package.json").read_text())["version"]; z=zipfile.ZipFile("downloads/AEB-Laag-midden-hoog-v"+v+".zip","w",zipfile.ZIP_DEFLATED); [z.write(p,str(p)) for p in pathlib.Path("dist").rglob("*") if p.is_file()]; z.write("README.md"); z.write("netlify.toml"); z.close()'
+      - name: Retain verified static output on repair branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist downloads
+          git diff --cached --quiet || git commit -m "[built-static] Verify and package AEB 1.1.0"
+          git push

@@ -1,15 +1,17 @@
 # AEB — Laag, midden of hoog risico?
 
-**Versie 1.0.1 · 3 november 2026.** Tien nieuwe praktijkcases voor de AEB-training werkvergunningen. Deelnemers slepen een samenvatting naar **Laag**, **Midden** of **Hoog**. Aantikken, categorieknoppen en toetsenbord werken ook. Vijf cases hebben een vergrootbare schematische illustratie. De startpagina gebruikt een foto van de AEB-website en de logo’s van AEB en Deltalinqs Training & Services.
+**Versie 1.1.0 · 3 november 2026.** Tien nieuwe praktijkcases voor de AEB-training werkvergunningen. Deelnemers kiezen met drie knoppen: **Laag**, **Midden** of **Hoog**. Slepen is niet meer nodig; toetsenbordbediening blijft mogelijk. Vijf cases hebben een vergrootbare schematische illustratie. De startpagina gebruikt een foto van de AEB-website en de logo’s van AEB en Deltalinqs Training & Services.
 
 De complete website staat in **`dist/`**, met `index.html` direct in die map. **U hoeft niets te installeren of te bouwen.** Geen database, eigen server, serverfuncties of persoonlijke API-sleutels.
 
-## Hersteld in versie 1.0.1
+## Hersteld in versie 1.1.0
 
-- Slepen op telefoons gebruikt nu eigen aanraakbediening. Paginaschuiven en tekstselectie nemen de beweging van het kaartje niet over.
-- Het kaartje volgt de vinger boven de pagina; de doelvakken blijven op hun plek. De categorie wordt vastgesteld op de werkelijke loslaatpositie.
-- Ook snel loslaten, opnieuw verplaatsen en automatisch doorschuiven bij de schermrand zijn afgedekt. Een afgebroken beweging verandert de eerdere keuze niet.
-- Het hele categorievak is aantikbaar. Dezelfde aanraakbediening wordt gebruikt bij zelfstandig oefenen en bij deelname aan een groepssessie.
+- Slepen is geheel vervangen door drie gewone knoppen: **Laag**, **Midden** en **Hoog**, voor telefoon, tablet en computer.
+- Bij tijdelijk verbindingsverlies kan de deelnemer blijven kiezen. Antwoorden blijven alleen in het geheugen van de open telefoonpagina en worden na herstel doorgestuurd. Ontvangst wordt pas gemeld na bevestiging door de trainer.
+- Terugkeren naar het trainers- of deelnemersscherm, internetherstel en terugkeer uit een browserpauze starten actief verbindingsherstel.
+- Een kort onderbroken verbinding wordt niet meer na één minuut definitief gewist. De hersteltermijn is nu **tien minuten**; expliciet afsluiten en wissen blijft direct werken voor bereikbare deelnemers.
+- Een mislukte verbinding van een nieuwe deelnemer maakt de bestaande trainerssessie niet ongeldig. Gelijke voornamen blijven afzonderlijke deelnemers.
+- De trainerspagina vraagt, waar de browser dat ondersteunt, een schermvergrendeling aan om slaapstand tijdens de zichtbare les te voorkomen. Het systeem kan achtergrondtabbladen nog steeds pauzeren of verwijderen.
 
 ## Publiceren via GitHub en Netlify
 
@@ -27,7 +29,7 @@ De complete website staat in **`dist/`**, met `index.html` direct in die map. **
 
 `netlify.toml` legt de lege buildopdracht en publicatiemap al vast. Wanneer de repository aan Netlify gekoppeld is, publiceert Netlify nieuwe commits op `main` automatisch, tenzij automatisch publiceren daar is uitgezet.
 
-Het bestand `downloads/AEB-Laag-midden-hoog-v1.0.1.zip` bevat deze korte handleiding, `netlify.toml` en de complete `dist/`. Bij handmatige publicatie uploadt u alleen de uitgepakte map `dist`.
+Het bestand `downloads/AEB-Laag-midden-hoog-v1.1.0.zip` bevat deze korte handleiding, `netlify.toml` en de complete `dist/`. Bij handmatige publicatie uploadt u alleen de uitgepakte map `dist`.
 
 ## Gebruik in de presentatie
 
@@ -39,7 +41,7 @@ Het bestand `downloads/AEB-Laag-midden-hoog-v1.0.1.zip` bevat deze korte handlei
 
 ## Tijdens de oefening
 
-Deelnemers lezen de case en slepen de samenvatting naar een categorie. Op een telefoon kan ook de categorie worden aangetikt. Via Tab/Enter en de pijltjestoetsen kan de categorie met het toetsenbord worden gekozen. De keuze kan tijdens het oefenen worden gewijzigd. **Keuze ontvangen door de trainer** verschijnt pas na ontvangstbevestiging.
+Deelnemers lezen de case en drukken op **Laag**, **Midden** of **Hoog**. Via Tab/Enter en de pijltjestoetsen kan de categorie met het toetsenbord worden gekozen. De keuze kan tijdens het oefenen worden gewijzigd. **Keuze ontvangen door de trainer** verschijnt pas na ontvangstbevestiging.
 
 De trainer ziet hoeveel deelnemers verbonden zijn, hun voortgang, keuzes en de verdeling over **Laag/Midden/Hoog**. Goede antwoorden en groene markeringen blijven standaard verborgen. Selecteer alle of enkele cases en kies **Start nabespreking**. De telefoons volgen de gekozen case; antwoorden wijzigen kan tijdens die nabespreking niet. Kies **Toon goede antwoorden** om categorie en feedback zichtbaar te maken. Bij de volgende case staan antwoorden weer uit. Met **Laat de groep verder oefenen** hervat u het oefenen. **Projectieweergave** maakt de gezamenlijke bespreking rustiger.
 
@@ -49,9 +51,9 @@ Bij **Zelf oefenen** zijn geen groepsverbinding of naam nodig. De feedback versc
 
 ## Afsluiten en tijdelijke gegevens
 
-Klik na de les op **Sessie afsluiten en wissen** en bevestig. Namen en antwoorden verdwijnen uit het trainersgeheugen. Verbonden telefoons ontvangen het afsluitbericht en wissen hun gegevens. Een onbereikbare telefoon wist na circa zestig seconden zonder trainercontact, of bij hervatten na browserpauze. Onmiddellijke wissing op een offline apparaat is niet mogelijk.
+Klik na de les op **Sessie afsluiten en wissen** en bevestig. Namen en antwoorden verdwijnen uit het trainersgeheugen. Verbonden telefoons ontvangen het afsluitbericht en wissen hun gegevens. Een onbereikbare telefoon wist na tien minuten zonder trainercontact, of bij hervatten na browserpauze. Onmiddellijke wissing op een offline apparaat is niet mogelijk.
 
-Houd de trainerspagina tijdens de les open en voorkom slaapstand. Vernieuwen of sluiten verliest de sessie. Er is geen serverkopie of herstelbestand. De maximale sessieduur is acht uur. Zelfstandige, anonieme oefenvoortgang staat maximaal acht uur in sessionStorage van het eigen tabblad; groepsnamen en groepsantwoorden worden daar niet opgeslagen.
+Houd de trainerspagina tijdens de les open. Een korte schermwisseling sluit de sessie niet af; bij terugkeer probeert de app de verbinding actief te herstellen. De browser kan een achtergrondpagina echter echt verwijderen en daarmee het werkgeheugen verliezen. Vernieuwen of sluiten verliest de sessie. Er is geen serverkopie of herstelbestand. De maximale sessieduur is acht uur. Zelfstandige, anonieme oefenvoortgang staat maximaal acht uur in sessionStorage van het eigen tabblad; groepsnamen en groepsantwoorden worden daar niet opgeslagen.
 
 ## Verbinding zonder eigen backend
 
@@ -78,7 +80,7 @@ De broncode is beschikbaar voor volgende wijzigingen. Alleen de ontwikkelaar geb
 | --- | --- |
 | `src/questions.json` | Tien cases, samenvattingen, categorieën en feedback |
 | `scripts/cases.py` | Redactionele generator voor dezelfde inhoud |
-| `src/question-view.tsx` | Sleepbediening, categorieknoppen, beelden en feedback |
+| `src/question-view.tsx` | Categorieknoppen, beelden en feedback |
 | `src/live-session.ts` | Tijdelijke WebRTC-sessies, herstel en wissen |
 | `src/live-trainer.tsx` | Sessie-QR, deelnemers en antwoordverdelingen |
 | `src/live-learner.tsx` | Voornaam, deelname en volgen van nabespreking |
@@ -86,6 +88,6 @@ De broncode is beschikbaar voor volgende wijzigingen. Alleen de ontwikkelaar geb
 
 ## Verificatie
 
-TypeScript, productiebuild en tests voor tien categorieën, scores, tijdelijke voortgang, twee deelnemers, ontvangstbevestiging, verborgen antwoorden, nabespreking, herstel, payloadvalidatie en wissen zijn gecontroleerd. De transporttests gebruiken een gesimuleerde verbinding en bewijzen geen bereikbaarheid door een bedrijfsfirewall. De browsercontrole van de gebouwde `dist` omvat sleepbediening, alle tien cases, afronding, procedurefeedback en de trainerinterface. Bij de echte netwerkproef werd PeerJS Cloud bereikt en de sessie-QR getoond, maar kwam vanuit de testbrowser geen WebRTC-gegevensverbinding tot stand. De deelnemer kreeg na de timeout een afsluitmelding en zijn tijdelijke gegevens werden gewist. Live deelname is hiermee nog niet op Netlify of met echte telefoons bevestigd. Controleer na publicatie op de leslocatie: twee namen zichtbaar, twee verbonden, ontvangen categorieën in de tabel, nabespreking volgen, antwoorden tonen/verbergen, volgende case opnieuw verborgen en afsluiten/wissen op alle apparaten.
+De regressieset controleert de inhoud, categorieknoppen, ontvangstbevestiging, verborgen antwoorden, nabespreking, tijdelijke gegevens en afsluiten/wissen. Transporttests simuleren meerdere deelnemers (ook met dezelfde naam), nieuwe deelname tijdens het oefenen, antwoorden kiezen tijdens uitval, hervatten na twee minuten achtergrondpauze, vertraagde timers en herstel met dezelfde sessiecode na verlies van de verbindingspeer.
 
-Aanvullende verificatie 1.0.1: regressietests voor de aanraakbediening controleren preventie van paginaschuiven, echte eindcoördinaten, snel loslaten, herhaald verplaatsen, een tweede vinger, annuleren en niet-actieve bediening.
+Een gesimuleerde verbinding bewijst geen bereikbaarheid door een bedrijfsfirewall. Een browser of besturingssysteem kan een tabblad volledig stoppen of uit het geheugen verwijderen; zonder server of permanente opslag is herstel van zo'n verwijderde trainerssessie niet mogelijk. Voorkom daarom sluiten of vernieuwen van het trainersscherm tijdens een les. De bestaande PeerJS- en WebRTC-diensten blijven nodig.

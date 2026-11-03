@@ -147,3 +147,102 @@ test('geen ontvangst van afsluitbericht: offline telefoon wist na timeout alsnog
   learner.dispose(); t.mock.timers.reset();
 });
 
+
+test('nieuwe deelnemer met dezelfde naam verstoort bestaande deelnemers niet', async () => {
+  const net = broker(); let state; let a; let b; let c;
+  const host = new TrainerSession(s => state = s, net.factory); await host.start(); await flush();
+  const one = new LearnerSession(state.code, s => a = s, net.factory);
+  const two = new LearnerSession(state.code, s => b = s, net.factory);
+  const three = new LearnerSession(state.code, s => c = s, net.factory);
+  try {
+    await one.start('Sam'); await two.start('Sam'); await flush();
+    one.update({ answers: { 1: 2 }, current: 2, finished: false }); await flush();
+    const firstId = state.participants[0].id;
+    await three.start('Nieuwe deelnemer'); await flush();
+    assert.equal(state.participants.length, 3);
+    assert.equal(new Set(state.participants.map(p => p.id)).size, 3);
+    assert.equal(a.status, 'connected'); assert.equal(b.status, 'connected'); assert.equal(c.status, 'connected');
+    assert.deepEqual(state.participants.find(p => p.id === firstId).answers, { 1: 2 });
+  } finally { one.dispose(); two.dispose(); three.dispose(); host.close(true); }
+});
+
+test('telefoon blijft kiezen bij korte uitval en verstuurt de laatste keuze na herstel', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 100000 });
+  const net = broker(); let state; let guest;
+  const host = new TrainerSession(s => state = s, net.factory); await host.start(); await flush();
+  const learner = new LearnerSession(state.code, s => guest = s, net.factory); await learner.start('Doorgaan'); await flush();
+  try {
+    learner.update({ answers: { 1: 1 }, current: 1, finished: false }); await flush();
+    const id = state.participants[0].id;
+    const peer = [...net.peers.values()].find(p => p.id.startsWith('guest-')); peer.connections.at(-1).close(); await flush();
+    learner.update({ answers: { 1: 4, 2: 2 }, current: 3, finished: false });
+    assert.deepEqual(guest.progress.answers, { 1: 4, 2: 2 });
+    assert.ok(guest.acknowledged < guest.progress.revision);
+    t.mock.timers.tick(6000); await flush();
+    assert.equal(guest.status, 'connected'); assert.equal(state.participants.length, 1);
+    assert.equal(state.participants[0].id, id);
+    assert.deepEqual(state.participants[0].answers, { 1: 4, 2: 2 });
+    assert.equal(guest.acknowledged, guest.progress.revision);
+  } finally { learner.dispose(); host.close(true); t.mock.timers.reset(); }
+});
+
+test('trainer kan twee minuten pauzeren en dezelfde sessie met antwoorden hervatten', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 100000 });
+  const net = broker(); let state; let guest;
+  const host = new TrainerSession(s => state = s, net.factory); await host.start(); await flush();
+  const learner = new LearnerSession(state.code, s => guest = s, net.factory); await learner.start('Achtergrond'); await flush();
+  try {
+    learner.update({ answers: { 1: 2 }, current: 2, finished: false }); await flush();
+    const code = state.code;
+    // Simulate a paused trainer scheduler, while learner retry/heartbeat work continues.
+    clearInterval(host.heartbeat);
+    t.mock.timers.tick(120000); await flush();
+    assert.notEqual(guest.status, 'error'); assert.equal(guest.name, 'Achtergrond');
+    host.resumeConnection(); learner.resumeConnection(); await flush();
+    assert.equal(state.code, code); assert.equal(guest.status, 'connected');
+    assert.deepEqual(state.participants[0].answers, { 1: 2 });
+    assert.deepEqual(guest.progress.answers, { 1: 2 });
+  } finally { learner.dispose(); host.close(true); t.mock.timers.reset(); }
+});
+
+test('na een geschorste browser worden open kanalen eerst gepeild in plaats van direct gewist', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 100000 });
+  const net = broker(); let state; let guest;
+  const host = new TrainerSession(s => state = s, net.factory); await host.start(); await flush();
+  const learner = new LearnerSession(state.code, s => guest = s, net.factory); await learner.start('Hervatten'); await flush();
+  try {
+    clearInterval(host.heartbeat); clearInterval(learner.timer);
+    t.mock.timers.tick(120000);
+    host.tick(); learner.tick(); await flush();
+    assert.equal(guest.status, 'connected'); assert.equal(state.participants[0].online, true);
+  } finally { learner.dispose(); host.close(true); t.mock.timers.reset(); }
+});
+
+test('een fout bij een nieuwe deelnemer maakt de werkende trainerssessie niet ongeldig', async () => {
+  const net = broker(); let state; let guest;
+  const host = new TrainerSession(s => state = s, net.factory); await host.start(); await flush();
+  const learner = new LearnerSession(state.code, s => guest = s, net.factory); await learner.start('Bestaand'); await flush();
+  try {
+    const trainerPeer = [...net.peers.values()].find(p => !p.id.startsWith('guest-'));
+    trainerPeer.emit('error', { type: 'webrtc' }); await flush();
+    assert.equal(state.status, 'ready'); assert.equal(guest.status, 'connected'); assert.equal(state.participants.length, 1);
+    trainerPeer.emit('error', { type: 'peer-unavailable' }); await flush();
+    assert.equal(state.status, 'ready');
+  } finally { learner.dispose(); host.close(true); }
+});
+
+test('vernietigde signaling-peer wordt met dezelfde sessiecode hersteld', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 100000 });
+  const net = broker(); let state; let guest;
+  const host = new TrainerSession(s => state = s, net.factory); await host.start(); await flush();
+  const learner = new LearnerSession(state.code, s => guest = s, net.factory); await learner.start('Zelfde sessie'); await flush();
+  try {
+    learner.update({ answers: { 1: 4 }, current: 2, finished: false }); await flush();
+    const code = state.code;
+    const trainerPeer = [...net.peers.values()].find(p => !p.id.startsWith('guest-')); trainerPeer.destroy();
+    host.resumeConnection(); await flush();
+    learner.resumeConnection(); t.mock.timers.tick(6000); await flush();
+    assert.equal(state.code, code); assert.equal(state.status, 'ready'); assert.equal(guest.status, 'connected');
+    assert.equal(state.participants.length, 1); assert.deepEqual(state.participants[0].answers, { 1: 4 });
+  } finally { learner.dispose(); host.close(true); t.mock.timers.reset(); }
+});
