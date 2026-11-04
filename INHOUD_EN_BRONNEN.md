@@ -1,4 +1,4 @@
-# Inhoud en antwoordoverzicht — AEB risico-oefenapp 1.1.1
+# Inhoud en antwoordoverzicht — AEB risico-oefenapp 1.2.1
 
 4 november 2026. Tien nieuwe formatieve cases, geen reproductie van examens A/B. Beoogd niveau: toepassen en analyseren. Twee laag, vijf midden en drie hoog. Het accent ligt op het onderbouwen van midden versus hoog.
 
@@ -188,3 +188,11 @@ De cases bereiden voor op het onderbouwen van classificaties, herkennen van onvo
 De tien cases, categorieën, procedurecitaten en inhoudelijke toelichtingen zijn ongewijzigd. Deelnemers kiezen met drie knoppen Laag, Midden en Hoog; de sleepbediening is verwijderd. Groepsverbindingen herstellen bij terugkeer naar de pagina en bij internetherstel. Korte uitval blokkeert het kiezen niet; ontvangst blijft afhankelijk van een bevestiging door de trainer. De verlies-timeout bedraagt tien minuten. Expliciet afsluiten/wissen en de maximale sessieduur van acht uur blijven gelden. Namen en groepsantwoorden staan uitsluitend in werkgeheugen.
 
 Trage verbindingsopbouw wordt niet langer elke vijf seconden afgebroken. Ook een mislukte eerste initialisatie wordt automatisch opnieuw geprobeerd. De trainer en deelnemer kunnen herstel activeren zonder de pagina te vernieuwen. Een eerder verlaten sessie heeft geen invloed op een nieuwe code. De oorspronkelijke productieversie sloot deelname al na zestig seconden zonder contact; dat kon de gemelde afsluitmelding veroorzaken.
+
+## Technische correctie 1.2.1 van 4 november 2026
+
+De inhoud van de tien cases, categorieën en procedurefragmenten is ongewijzigd. De broncode van VCH Sector Bulk, VCH Sector Container Remote en VCH Basis Gevaarlijke Stoffen is vergeleken met AEB 1.1.1. Alle vier gebruiken dezelfde instellingen: PeerJS 1.5.5, beveiligde publieke PeerJS Cloud, de standaard ICE-instellingen met extra TCP-varianten, betrouwbare WebRTC-datachannels, JSON-berichten en ontvangstbevestigingen. De modulegebonden identifiers blijven verschillend, zodat de oefeningen afzonderlijke sessies houden.
+
+Deze versie behoudt die aanpak en voegt geen extra aanbieder of sleutel toe. De eerste deelname moet door de trainer zijn bevestigd voordat vragen worden vrijgegeven. Een uitblijvende eerste bevestiging leidt tot een veilige herhaling van de aanmelding; dezelfde deelnemer wordt niet dubbel toegevoegd. De trainer toont vóór de eerste verbinding expliciet dat de sessie op deelnemers wacht. Een niet-afgeronde aansluiting geeft een gerichte melding. Herstel na latere korte uitval, tien minuten verlies-timeout en afsluiten/wissen blijven gelden.
+
+De oude TURN-verwijzingen in de PeerJS-standaardconfiguratie zijn geen bewijs van de oorzaak van het specifieke incident: een directe verbinding kan zonder relay werken. De verschillen tussen netwerkpaden en de exacte oorzaak op de telefoon zijn niet vastgesteld. TypeScript-controle, productiebuild, vijftien gesimuleerde transporttests en één configuratietest slagen. Een volledige echte trainer-telefoonverbinding is vanuit deze testomgeving niet bevestigd.

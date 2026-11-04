@@ -5,18 +5,18 @@ export type Progress = { answers: Record<number, number>; revision: number; curr
 export type Participant = Progress & { id: string; name: string; online: boolean; lastSeen: number };
 export type Review = { phase: 'practice' | 'review'; question: number; revealed: boolean };
 export type HostSnapshot = Review & { active: boolean; status: 'idle' | 'connecting' | 'ready' | 'reconnecting' | 'error'; code: string; error: string; participants: Participant[] };
-export type GuestSnapshot = Review & { status: 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error' | 'closed'; name: string; progress: Progress; acknowledged: number; error: string };
+export type GuestSnapshot = Review & { status: 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error' | 'closed'; joined: boolean; name: string; progress: Progress; acknowledged: number; error: string };
 type Connection = { open: boolean; peer: string; on: (event: string, fn: (...args: any[]) => void) => any; send: (data: any) => void; close: () => void };
 type PeerLike = { open?: boolean; destroyed: boolean; disconnected: boolean; on: (event: string, fn: (...args: any[]) => void) => any; connect: (id: string, options: any) => Connection; reconnect: () => void; destroy: () => void };
 export type PeerFactory = (id?: string) => Promise<PeerLike>;
 const emptyProgress = (): Progress => ({ answers: {}, revision: 0, current: 1, finished: false });
 const emptyReview = (): Review => ({ phase: 'practice', question: 1, revealed: false });
 export const emptyHost = (): HostSnapshot => ({ ...emptyReview(), active: false, status: 'idle', code: '', error: '', participants: [] });
-export const emptyGuest = (): GuestSnapshot => ({ ...emptyReview(), status: 'idle', name: '', progress: emptyProgress(), acknowledged: -1, error: '' });
+export const emptyGuest = (): GuestSnapshot => ({ ...emptyReview(), status: 'idle', joined: false, name: '', progress: emptyProgress(), acknowledged: -1, error: '' });
 const cloneProgress = (p: Progress): Progress => ({ answers: { ...p.answers }, revision: p.revision, current: p.current, finished: p.finished });
 const peerFactory: PeerFactory = async id => {
   const { default: Peer, util } = await import('peerjs');
-  // PeerJS's public Cloud and default STUN/TURN configuration; no personal API key.
+  // Same transport settings as all three VCH apps; no additional service or key.
   const defaults = util.defaultConfig;
   const tcpRelays = defaults.iceServers.filter(server => 'username' in server).map(server => ({ ...server, urls: (Array.isArray(server.urls) ? server.urls : [server.urls]).filter((url): url is string => typeof url === 'string' && url.startsWith('turn:')).map(url => `${url}?transport=tcp`) }));
   return new Peer(id || `aeb-risico-guest-${newClientId()}`, { secure: true, debug: 0, config: { ...defaults, iceServers: [...defaults.iceServers, ...tcpRelays] } }) as unknown as PeerLike;
@@ -24,7 +24,12 @@ const peerFactory: PeerFactory = async id => {
 function send(connection: Connection, message: object) {
   if (connection.open) { try { connection.send({ protocol: PROTOCOL, ...message }); } catch { /* Connection recovery handles loss. */ } }
 }
-function networkError() { return 'De live verbinding is niet beschikbaar. Controleer internet en probeer opnieuw. Een bedrijfsnetwerk kan de verbinding blokkeren.'; }
+function networkError(type = '') {
+  if (type === 'peer-unavailable') return 'De trainer is niet bereikbaar via deze sessiecode. Controleer of het trainersscherm nog open is en scan de actuele sessie-QR.';
+  if (type === 'webrtc') return 'De antwoordverbinding met de trainer lukt niet. Controleer internet of probeer een ander netwerk, bijvoorbeeld een mobiele hotspot. Houd dit scherm open; de app probeert opnieuw.';
+  return 'De live verbinding is niet beschikbaar. Controleer internet en probeer opnieuw. Een bedrijfsnetwerk kan de verbinding blokkeren.';
+}
+const trainerConnectionIssue = 'Een deelnemer kon de antwoordverbinding niet afronden. Controleer of die deelnemer als verbonden in de lijst verschijnt. Probeer bij aanhoudende problemen een ander netwerk, bijvoorbeeld een mobiele hotspot.';
 
 export class TrainerSession {
   private snapshot: HostSnapshot = emptyHost();
@@ -60,7 +65,10 @@ export class TrainerSession {
   private accept(connection: Connection) {
     if (this.closed || this.pending.size > MAX_PARTICIPANTS + 10) { connection.close(); return; }
     this.pending.add(connection);
-    this.joinTimers.set(connection, setTimeout(() => { this.pending.delete(connection); this.joinTimers.delete(connection); connection.close(); }, 35000));
+    this.joinTimers.set(connection, setTimeout(() => {
+      this.pending.delete(connection); this.joinTimers.delete(connection); connection.close();
+      if (!this.closed) { this.snapshot.error = trainerConnectionIssue; this.emit(); }
+    }, 35000));
     let clientId = '';
     connection.on('data', (raw: unknown) => {
       if (this.closed || !validEnvelope(raw)) return;
@@ -76,6 +84,7 @@ export class TrainerSession {
         const previousRecord = this.records.get(clientId);
         const record: Participant = previousRecord ? { ...previousRecord, online: true, lastSeen: Date.now() } : { ...emptyProgress(), id: clientId, name: cleanName(data.name), online: true, lastSeen: Date.now() };
         this.records.set(clientId, record);
+        if (this.snapshot.status === 'ready') this.snapshot.error = '';
         send(connection, { type: 'welcome', review: this.reviewState(), progress: cloneProgress(record) });
         this.emit(); return;
       }
@@ -83,6 +92,8 @@ export class TrainerSession {
       const person = this.records.get(clientId)!;
       person.lastSeen = Date.now();
       if (!person.online) { person.online = true; this.emit(); }
+      // Repeat the handshake safely if the first welcome was delayed or lost.
+      if (data.type === 'hello' && data.clientId === clientId) { send(connection, { type: 'welcome', review: this.reviewState(), progress: cloneProgress(person) }); return; }
       if (data.type === 'ping') { send(connection, { type: 'pong' }); return; }
       if (data.type === 'pong') return;
       if (data.type === 'leave') { connection.close(); return; }
@@ -97,8 +108,11 @@ export class TrainerSession {
       }
     });
     const disconnected = () => {
-      clearTimeout(this.joinTimers.get(connection)); this.joinTimers.delete(connection); this.pending.delete(connection);
-      if (this.closed || !clientId || this.connections.get(clientId) !== connection) return;
+      clearTimeout(this.joinTimers.get(connection)); this.joinTimers.delete(connection);
+      const wasPending = this.pending.delete(connection);
+      if (this.closed) return;
+      if (!clientId) { if (wasPending) { this.snapshot.error = trainerConnectionIssue; this.emit(); } return; }
+      if (this.connections.get(clientId) !== connection) return;
       this.connections.delete(clientId);
       const record = this.records.get(clientId); if (record) record.online = false;
       this.emit();
@@ -227,9 +241,9 @@ export class LearnerSession {
       peer.on('open', opened);
       if (peer.open) opened();
       peer.on('disconnected', () => { /* Existing data channels work independently of signaling. */ });
-      peer.on('error', () => {
-        if (this.disposed) return;
-        if (!this.connection?.open) { this.snapshot.status = 'reconnecting'; this.snapshot.error = 'Geen verbinding met de trainer. We proberen opnieuw; houd dit scherm open.'; this.emit(); }
+      peer.on('error', (error: { type?: string }) => {
+        if (this.disposed || this.peer !== peer) return;
+        if (!this.connection?.open) { this.snapshot.status = 'reconnecting'; this.snapshot.error = networkError(error.type); this.emit(); }
       });
     } catch { if (!this.disposed) { this.snapshot.status = 'reconnecting'; this.snapshot.error = networkError(); this.emit(); } }
     finally { this.creatingPeer = false; }
@@ -258,7 +272,7 @@ export class LearnerSession {
       const review = data.review;
       if (!progress || !review || !['practice', 'review'].includes(review.phase) || !questionData.some(q => q.n === review.question) || typeof review.revealed !== 'boolean') return;
       if (review.phase === 'review' || progress.revision > this.snapshot.progress.revision) this.snapshot.progress = progress;
-      this.snapshot = { ...this.snapshot, phase: review.phase, question: review.question, revealed: review.revealed, status: 'connected', error: '', acknowledged: progress.revision };
+      this.snapshot = { ...this.snapshot, joined: true, phase: review.phase, question: review.question, revealed: review.revealed, status: 'connected', error: '', acknowledged: progress.revision };
       const first = !this.welcomed; this.welcomed = true; this.connecting = false; this.emit();
       if (first && review.phase === 'practice') this.flush();
     });
@@ -267,7 +281,7 @@ export class LearnerSession {
       this.welcomed = false; this.connecting = false; this.attemptAt = Date.now() - RECONNECT_MS; this.snapshot.status = 'reconnecting';
       this.snapshot.error = 'Verbinding onderbroken. Je keuzes blijven tijdelijk op je telefoon en worden na herstel doorgestuurd.'; this.emit();
     };
-    connection.on('close', disconnected); connection.on('error', () => { connection.close(); disconnected(); });
+    connection.on('close', disconnected); connection.on('error', () => { connection.close(); disconnected(); if (!this.disposed && this.connection === connection) { this.snapshot.error = networkError('webrtc'); this.emit(); } });
   }
   update(value: Omit<Progress, 'revision'>) {
     if (this.disposed || this.snapshot.phase !== 'practice' || this.snapshot.status === 'idle') return;
@@ -299,7 +313,9 @@ export class LearnerSession {
       if (Date.now() > this.resumeUntil && Date.now() - this.lastSeen > STALE_MS) { this.connection.close(); return; }
       send(this.connection, { type: 'ping' });
       if (this.snapshot.acknowledged !== this.snapshot.progress.revision) this.flush();
-    } else if (Date.now() - this.attemptAt >= (this.connecting ? CONNECT_TIMEOUT_MS : RECONNECT_MS)) this.connect();
+    } else if (Date.now() - this.attemptAt >= (this.connecting ? CONNECT_TIMEOUT_MS : RECONNECT_MS)) {
+      this.snapshot.status = 'reconnecting'; this.snapshot.error ||= networkError('webrtc'); this.emit(); this.connect();
+    } else if (this.connection?.open) send(this.connection, { type: 'hello', clientId: this.clientId, name: this.snapshot.name });
   }
   dispose(status: 'idle' | 'closed' | 'error' = 'idle', error = '') {
     if (this.disposed) return;

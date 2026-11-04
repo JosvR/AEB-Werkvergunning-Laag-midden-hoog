@@ -3,6 +3,7 @@ node_modules/
 .netlify/
 .openai/
 .test-runtime/
+.test-peer/
 *.tsbuildinfo
 .env
 .env.*

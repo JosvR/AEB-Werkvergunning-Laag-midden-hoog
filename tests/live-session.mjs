@@ -14,12 +14,15 @@ const { TrainerSession, LearnerSession } = await import(pathToFileURL(resolve('.
 after(() => rm('.test-runtime', { recursive: true, force: true }));
 const flush = async () => { for (let i = 0; i < 18; i++) await Promise.resolve(); };
 
-function broker({ connectionDelay = 0 } = {}) {
+function broker({ connectionDelay = 0, dropWelcomeOnce = false } = {}) {
   const peers = new Map(); let next = 0;
   class Connection extends EventEmitter {
     open = false; closed = false; peer; remote;
     constructor(peer) { super(); this.peer = peer; }
-    send(data) { if (this.open) queueMicrotask(() => { if (this.remote.open) this.remote.emit('data', structuredClone(data)); }); }
+    send(data) {
+      if (data.type === 'welcome' && dropWelcomeOnce) { dropWelcomeOnce = false; return; }
+      if (this.open) queueMicrotask(() => { if (this.remote.open) this.remote.emit('data', structuredClone(data)); });
+    }
     close() { if (this.closed) return; this.closed = true; this.open = false; this.emit('close'); if (!this.remote.closed) { this.remote.closed = true; this.remote.open = false; this.remote.emit('close'); } }
   }
   class Peer extends EventEmitter {
@@ -279,4 +282,39 @@ test('ook een mislukte eerste transportinitialisatie herstelt automatisch met de
     t.mock.timers.tick(5000); await flush();
     assert.equal(state.status, 'ready'); assert.equal(state.code, code); assert.equal(calls, 2);
   } finally { host.close(true); t.mock.timers.reset(); }
+});
+
+test('deelname wordt pas na bevestiging vrijgegeven; verloren welcome wordt opnieuw opgevraagd', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 100000 });
+  const net = broker({ dropWelcomeOnce: true }); let hostState; let guestState;
+  const host = new TrainerSession(s => hostState = s, net.factory); await host.start(); await flush();
+  const guest = new LearnerSession(hostState.code, s => guestState = s, net.factory);
+  try {
+    await guest.start('Bevestiging'); await flush();
+    assert.equal(guestState.joined, false);
+    assert.equal(hostState.participants.length, 1);
+    t.mock.timers.tick(5000); await flush();
+    assert.equal(guestState.joined, true); assert.equal(guestState.status, 'connected');
+    assert.equal(hostState.participants.length, 1, 'Herhaalde hello maakt geen dubbele deelnemer.');
+    guest.update({ answers: { 1: 2 }, current: 1, finished: false }); await flush();
+    assert.equal(hostState.participants[0].answers[1], 2);
+    assert.equal(guestState.acknowledged, guestState.progress.revision);
+  } finally { guest.dispose(); host.close(true); t.mock.timers.reset(); }
+});
+
+test('mislukte eerste aansluiting geeft trainer en deelnemer een melding zonder de sessie te wissen', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 100000 });
+  const net = broker({ connectionDelay: 60000 }); let hostState; let guestState;
+  const host = new TrainerSession(s => hostState = s, net.factory); await host.start(); await flush();
+  const code = hostState.code;
+  const guest = new LearnerSession(code, s => guestState = s, net.factory);
+  try {
+    await guest.start('Nog niet verbonden'); await flush();
+    t.mock.timers.tick(30000); await flush();
+    assert.equal(guestState.joined, false); assert.equal(guestState.status, 'reconnecting');
+    assert.match(guestState.error, /antwoordverbinding/);
+    assert.match(hostState.error, /Een deelnemer/);
+    assert.equal(hostState.active, true); assert.equal(hostState.code, code);
+    assert.deepEqual(hostState.participants, []);
+  } finally { guest.dispose(); host.close(true); t.mock.timers.reset(); }
 });
