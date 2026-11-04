@@ -1,39 +1,20 @@
 # AEB — Laag, midden of hoog risico?
 
-**Versie 1.2.1 · 4 november 2026.** Tien nieuwe praktijkcases voor de AEB-training werkvergunningen. Deelnemers kiezen met drie knoppen: **Laag**, **Midden** of **Hoog**. Slepen is niet meer nodig; toetsenbordbediening blijft mogelijk. Vijf cases hebben een vergrootbare schematische illustratie. De startpagina gebruikt een foto van de AEB-website en de logo’s van AEB en Deltalinqs Training & Services.
+**Versie 1.3.0 · 4 november 2026.** Tien praktijkcases voor de AEB-training werkvergunningen, met drie knoppen **Laag**, **Midden** en **Hoog**, vijf vergrootbare illustraties en een live trainersoverzicht.
 
-De complete website staat in **`dist/`**, met `index.html` direct in die map. **U hoeft niets te installeren of te bouwen.** Geen database, eigen server, serverfuncties of persoonlijke API-sleutels.
+De complete website staat in **`dist/`**. Geen installatie of build nodig voor publicatie. Geen eigen server, serverfuncties, database of persoonlijke API-sleutels.
 
-## Aansluiten en ontvangst in versie 1.2.1
+## Verbindingsreparatie in 1.3.0
 
-De broncode van VCH Sector Bulk, VCH Sector Container Remote en VCH Basis Gevaarlijke Stoffen is vergeleken met AEB 1.1.1. Alle vier gebruiken **PeerJS 1.5.5**, de publieke PeerJS Cloud voor het vinden van de trainer en **WebRTC-datachannels** voor de antwoorden. De instellingen voor het transport zijn gelijk; alleen de modulegebonden identificatie verschilt. Deze versie behoudt die VCH-aanpak. Er is geen extra relaydienst, nieuwe accountaanmelding of aanvullende sleutel toegevoegd.
+Versie 1.2.1 verbeterde de aanmelding, maar behield uitsluitend het directe WebRTC-antwoordkanaal. Wanneer dat kanaal niet tot stand kwam, bleven telefoon en trainer op elkaar wachten. Het bereiken van de PeerJS-verbindingsdienst bewijst nog niet dat antwoorden tussen beide browsers kunnen stromen. De VCH-apps gebruiken dezelfde directe instellingen en bieden op dit punt geen andere route.
 
-- De eerste groepsdeelname wordt pas vrijgegeven na bevestiging door de trainer. Alleen een naam invullen geldt niet als geslaagd aansluiten. Deelnemers kunnen dus niet meer alle cases beantwoorden zonder ooit bij de trainer aangemeld te zijn.
-- Wanneer de eerste bevestiging uitblijft, herhaalt de deelnemer de aanmelding veilig. De trainer bevestigt die opnieuw zonder een dubbele deelnemer aan te maken.
-- De trainer toont **Sessie geopend — wacht op deelnemers** voordat iemand verbonden is. **Groepssessie actief** verschijnt pas bij een verbonden deelnemer.
-- Een niet-afgeronde aansluitpoging geeft een melding op beide schermen. Een onbereikbare sessiecode krijgt een gerichte melding op de telefoon.
-- Na een eerder bevestigde deelname kan de deelnemer bij korte uitval nog steeds verder kiezen. De trainer meldt ontvangst pas na een bevestiging van de antwoorden.
+Deze versie behoudt PeerJS/WebRTC en voegt een tweede route toe: **versleutelde tijdelijke berichten via beveiligde WebSockets (TLS, poort 443)**. Zonder geopend direct antwoordkanaal schakelt de deelnemer na drie seconden automatisch over. Deze route vraagt geen onderlinge directe netwerkverbinding en werkt zonder account of vaste dienstsleutel. De vragen worden pas vrijgegeven nadat de trainer de deelname heeft bevestigd. Elke antwoordrevisie krijgt een afzonderlijke ontvangstbevestiging.
 
-De vergelijking bewijst niet waarom de eerdere AEB-test op de telefoon mislukte. Bij een directe browserverbinding zijn de oude TURN-adressen uit de PeerJS-bibliotheek niet nodig; daarom kan VCH werken terwijl een andere combinatie van netwerken vastloopt. De [beëindigde PeerJS TURN-dienst](https://github.com/orgs/peers/discussions/1172) is een beperking van de gezamenlijke standaardconfiguratie, geen vastgestelde oorzaak van het specifieke incident. De voorgestelde extra relay uit de niet-gepubliceerde versie 1.2.0 is niet opgenomen.
-
-**Voor een nieuwe les:** vernieuw de trainerpagina én de telefoonpagina en controleer rechtsboven **v1.2.1**. Start een nieuwe sessie en laat eerst één telefoon aansluiten. Controleer dat de trainer de naam ziet en dat één proefantwoord verschijnt. De drie categorieknoppen, QR-vergroting, vragen en tijdelijke opslag uitsluitend in werkgeheugen zijn behouden.
-
-## Eerdere correcties in versie 1.1.1
-
-- Slepen is geheel vervangen door drie gewone knoppen: **Laag**, **Midden** en **Hoog**, voor telefoon, tablet en computer.
-- Bij tijdelijk verbindingsverlies kan de deelnemer blijven kiezen. Antwoorden blijven alleen in het geheugen van de open telefoonpagina en worden na herstel doorgestuurd. Ontvangst wordt pas gemeld na bevestiging door de trainer.
-- Terugkeren naar het trainers- of deelnemersscherm, internetherstel en terugkeer uit een browserpauze starten actief verbindingsherstel.
-- Een kort onderbroken verbinding wordt niet meer na één minuut definitief gewist. De hersteltermijn is nu **tien minuten**; expliciet afsluiten en wissen blijft direct werken voor bereikbare deelnemers.
-- Een mislukte verbinding van een nieuwe deelnemer maakt de bestaande trainerssessie niet ongeldig. Gelijke voornamen blijven afzonderlijke deelnemers.
-- Een trage verbindingsopbouw krijgt dertig seconden om af te ronden; herstelpogingen en terugkeer naar het tabblad breken die poging niet iedere vijf seconden af. Ook een mislukte eerste initialisatie herstelt automatisch.
-- Bij een verbroken verbinding is er een knop **Verbinding opnieuw proberen**. Vernieuw daarvoor de pagina niet.
-- De trainerspagina probeert, waar de browser dat ondersteunt, het scherm wakker te houden tijdens de zichtbare les. Het systeem kan achtergrondtabbladen nog steeds pauzeren of verwijderen.
+Het verwijderen van browsergeschiedenis lost een ontbrekend antwoordkanaal niet op. Sluit voor de nieuwe les de oude app-tabbladen, open beide apparaten opnieuw en controleer rechtsboven **v1.3.0**. Start een nieuwe sessie en scan de nieuwe QR. Controleer eerst één deelnemer en één proefantwoord bij de trainer.
 
 ## Publiceren via GitHub en Netlify
 
-1. Open Netlify en kies **Add new project → Import an existing project → GitHub**.
-2. Selecteer **JosvR/AEB-Werkvergunning-Laag-midden-hoog**.
-3. Gebruik onderstaande instellingen en publiceer.
+Repository: **JosvR/AEB-Werkvergunning-Laag-midden-hoog**. Publiceer de meegeleverde map `dist`.
 
 | Instelling | Waarde |
 | --- | --- |
@@ -43,43 +24,35 @@ De vergelijking bewijst niet waarom de eerdere AEB-test op de telefoon mislukte.
 | Publish directory | `dist` |
 | Functions / database / omgevingsvariabelen | Niet nodig |
 
-`netlify.toml` legt de lege buildopdracht en publicatiemap al vast. Wanneer de repository aan Netlify gekoppeld is, publiceert Netlify nieuwe commits op `main` automatisch, tenzij automatisch publiceren daar is uitgezet.
+`netlify.toml` bevat deze instellingen. De bestaande GitHub-koppeling publiceert nieuwe commits op `main` automatisch. `downloads/AEB-Laag-midden-hoog-v1.3.0.zip` bevat deze handleiding, de inhoudsverantwoording, `netlify.toml` en de complete `dist/`. Bij handmatige publicatie uploadt u alleen de uitgepakte map `dist`.
 
-Het bestand `downloads/AEB-Laag-midden-hoog-v1.2.1.zip` bevat deze korte handleiding, `netlify.toml` en de complete `dist/`. Bij handmatige publicatie uploadt u alleen de uitgepakte map `dist`.
+## Gebruik in de les
 
-## Gebruik in de presentatie
+1. Gebruik de vaste Netlify-link met **`?trainer=1`** in de PowerPoint. Start **Start groepssessie** en houd dit tabblad open.
+2. Toon de actuele sessie-QR. **QR-code vergroten** toont hem groot genoeg voor achter in het lokaal; Escape of terug sluit de vergroting.
+3. Deelnemers scannen de QR, vullen hun voornaam/roepnaam in en kiezen **Meedoen**. De vragen verschijnen pas na bevestigde deelname. Handmatig aansluiten kan met de twaalf tekens van de sessiecode.
+4. Controleer vóór de oefening dat de trainer de deelnemer ziet en dat een proefantwoord verschijnt. Een ingevulde naam alleen betekent nog geen geslaagde verbinding.
+5. De deelnemer kiest Laag, Midden of Hoog en kan antwoorden aanpassen. **Keuze ontvangen door de trainer** verschijnt pas na bevestiging. Bij korte uitval blijven keuzes in het geheugen van de open telefoonpagina en worden ze opnieuw verstuurd.
+6. Selecteer cases en kies **Start nabespreking**. Telefoons volgen de gekozen case; antwoorden wijzigen is dan geblokkeerd. Goede antwoorden zijn standaard verborgen, ook na wisselen van case. **Toon goede antwoorden** maakt onderbouwing en procedurefeedback zichtbaar. **Laat de groep verder oefenen** hervat het oefenen. **Projectieweergave** vereenvoudigt het gezamenlijke scherm.
+7. Sluit na afloop af met **Sessie afsluiten en wissen** en bevestig.
 
-- Neem de vaste **Netlify-link met `?trainer=1`** op als hyperlink in de PowerPoint. Bijvoorbeeld: uw gepubliceerde hoofdlink, gevolgd door `?trainer=1`.
-- De trainer opent de app, klikt **Start groepssessie** en wacht op **Sessie geopend — wacht op deelnemers**. Zodra de eerste deelnemer verbonden is, verschijnt **Groepssessie actief**.
-- Toon de actuele **sessie-QR**. Met **QR-code vergroten** wordt hij schermvullend, ook voor deelnemers achterin het lokaal. Escape of de terugknop sluit de vergroting.
-- Deelnemers scannen de QR, voeren hun **voornaam/roepnaam** in en klikken **Meedoen**. De vragen verschijnen na bevestigde deelname. Handmatig aansluiten kan via **Meedoen met de groep** met de twaalf tekens van de sessiecode.
-- Een sessie-QR geldt voor één les. Gebruik dus de vaste trainerlink in de PowerPoint, en toon de QR vanuit de actieve app.
+Een sessie-QR geldt voor één les. De app gebruikt afzonderlijke deelnemersidentificaties; twee gelijke voornamen verstoren elkaar niet. De code begrenst een sessie op tachtig deelnemers; dat is geen gemeten capaciteit.
 
-## Tijdens de oefening
+**Zelf oefenen** heeft geen naam of groepsverbinding nodig. Feedback verschijnt na tien antwoorden. Anonieme zelfstandige voortgang staat maximaal acht uur in sessionStorage van het eigen tabblad. Groepsnamen en groepsantwoorden worden daar niet opgeslagen.
 
-Deelnemers lezen de case en drukken op **Laag**, **Midden** of **Hoog**. Via Tab/Enter en de pijltjestoetsen kan de categorie met het toetsenbord worden gekozen. De keuze kan tijdens het oefenen worden gewijzigd. **Keuze ontvangen door de trainer** verschijnt pas na ontvangstbevestiging.
+## Gegevens en openbare verbindingsdiensten
 
-De trainer ziet hoeveel deelnemers verbonden zijn, hun voortgang, keuzes en de verdeling over **Laag/Midden/Hoog**. Goede antwoorden en groene markeringen blijven standaard verborgen. Selecteer alle of enkele cases en kies **Start nabespreking**. De telefoons volgen de gekozen case; antwoorden wijzigen kan tijdens die nabespreking niet. Kies **Toon goede antwoorden** om categorie en feedback zichtbaar te maken. Bij de volgende case staan antwoorden weer uit. Met **Laat de groep verder oefenen** hervat u het oefenen. **Projectieweergave** maakt de gezamenlijke bespreking rustiger.
+Trainer en deelnemer bewaren groepsgegevens uitsluitend in werkgeheugen. De directe route gebruikt PeerJS 1.5.5 en WebRTC. De aanvullende route gebruikt `nostr-tools` 2.25.5 met NIP-44 v2-versleuteling en ondertekende NIP-01-berichten. Elke pagina krijgt een tijdelijke willekeurige sleutel, uitsluitend in het geheugen. De sessiecode is afgeleid van de openbare trainerssleutel; de deelnemer controleert dat die bij de code hoort. Deelnemers kunnen de berichten van andere deelnemers niet ontsleutelen.
 
-De feedback bevat de onderbouwing, waarom andere categorieën minder passen, een relevant tekstfragment uit **33.41P Werkvergunningen** en paragraaf/paginaverwijzing. In de trainertoelichting staat ook een bespreekvraag. Dit is formatieve oefening, zonder cesuur of examenstatus. Er worden geen vragen uit examen A of B getoond.
+De publieke relays zijn **`wss://relay.damus.io`** en **`wss://nos.lol`**. De app verzendt berichten van het tijdelijke type **20049**, waarvoor het protocol geen opslag verwacht, plus een vervaltijd van zestig seconden. Zij ontvangen alleen versleutelde namen/antwoorden; sessie-identificaties, tijdelijke openbare sleutels, berichtgrootte, tijdstip en netwerkmetadata blijven zichtbaar. De app maakt geen externe deelnemerslijst of resultatenbestand. Gedrag of logging van onafhankelijke relaybeheerders kan de app niet afdwingen; claim daarom geen gegarandeerde onmiddellijke verwijdering bij die diensten. De aanvullende route heeft geen persoonlijke accountaanmelding, vaste toegangssleutel of betaald abonnement nodig.
 
-Bij **Zelf oefenen** zijn geen groepsverbinding of naam nodig. De feedback verschijnt na tien antwoorden. Daarna kunnen onjuiste cases opnieuw worden geoefend. **Oefenvoortgang wissen** verwijdert de anonieme oefenronde.
+**Afsluiten en wissen** verwijdert namen en antwoorden uit het trainersgeheugen en verstuurt een afsluitbericht. Bereikbare deelnemers wissen hun gegevens; een onbereikbare telefoon wist na tien minuten zonder trainercontact, of bij hervatten na een langere browserpauze. Tijdelijke cryptografische sleutels worden bij afsluiten overschreven. Onmiddellijke wissing op een offline apparaat is niet mogelijk. Iedere nieuwe les krijgt een nieuwe willekeurige sessie.
 
-## Afsluiten en tijdelijke gegevens
+Houd de trainerpagina open. Bij internetherstel of terugkeer naar de pagina probeert de app de verbinding opnieuw. Vernieuwen, sluiten of verwijderen van het tabblad verliest het werkgeheugen. Er is geen serverkopie of herstelbestand. De maximale sessieduur is acht uur.
 
-Klik na de les op **Sessie afsluiten en wissen** en bevestig. Namen en antwoorden verdwijnen uit het trainersgeheugen. Verbonden telefoons ontvangen het afsluitbericht en wissen hun gegevens. Een onbereikbare telefoon wist na tien minuten zonder trainercontact, of bij hervatten na browserpauze. Onmiddellijke wissing op een offline apparaat is niet mogelijk.
+Live deelname heeft internet nodig. Publieke verbindingsdiensten hebben geen beschikbaarheidsgarantie. Een bedrijfsfilter kan ook WebSockets blokkeren. Test vooraf op de leslocatie met de echte trainerlaptop en telefoons. Het exacte Honor-toestel en het netwerk van de gebruiker zijn niet vanuit deze ontwikkelomgeving getest.
 
-Een eerder gesloten sessie blokkeert een nieuwe sessie niet: elke nieuwe sessie krijgt een willekeurige nieuwe code en er worden geen groepsgegevens opgeslagen in de browser. Het overslaan van de wisknop veroorzaakt dus geen blijvende vervuiling. Gebruik de wisknop wel om bereikbare deelnemers bewust af te melden.
-
-Houd de trainerspagina tijdens de les open. Een korte schermwisseling sluit de sessie niet af; bij terugkeer probeert de app de verbinding actief te herstellen. De browser kan een achtergrondpagina echter echt verwijderen en daarmee het werkgeheugen verliezen. Vernieuwen of sluiten verliest de sessie. Er is geen serverkopie of herstelbestand. De maximale sessieduur is acht uur. Zelfstandige, anonieme oefenvoortgang staat maximaal acht uur in sessionStorage van het eigen tabblad; groepsnamen en groepsantwoorden worden daar niet opgeslagen.
-
-## Verbinding zonder eigen backend
-
-Netlify levert uitsluitend statische bestanden. De gebundelde **PeerJS 1.5.5**-client gebruikt de publieke PeerJS Cloud om browsers bij elkaar te vinden en Google STUN voor directe WebRTC-verbindingen. De configuratie is dezelfde als in de VCH-apps. De bibliotheek bevat nog oude PeerJS TURN-adressen; deze dienst is [beëindigd](https://github.com/orgs/peers/discussions/1172) en biedt dus geen betrouwbare doorschakeling wanneer een directe route door NAT of een firewall ontbreekt. Antwoorden gaan versleuteld naar de trainersbrowser. De app maakt geen externe deelnemerslijst of resultatenbestand. Verbindingsdiensten kunnen netwerkmetadata verwerken. Er zijn geen persoonlijke accountgeheimen of extra diensten toegevoegd.
-
-Live deelname heeft internet nodig. Bedrijfswifi of een firewall kan WebRTC blokkeren; de gratis verbindingsdienst heeft geen beschikbaarheidsgarantie. Test na publicatie vooraf op de leslocatie met een trainer en twee telefoons. Zelf oefenen werkt zonder die live verbinding. De code heeft een limiet van tachtig deelnemers; dat is geen gemeten capaciteit of garantie.
-
-Bronnen voor de netwerkarchitectuur: [PeerJS starten](https://peerjs.com/client/getting-started), [PeerJS Cloud](https://peerjs.com/server/cloud), [PeerJS FAQ](https://peerjs.com/client/faq).
+Bronnen: [PeerJS](https://peerjs.com/client/getting-started), [beëindigde PeerJS TURN-dienst](https://github.com/orgs/peers/discussions/1172), [NIP-01 tijdelijke berichten](https://github.com/nostr-protocol/nips/blob/master/01.md), [NIP-44 versleuteling](https://github.com/nostr-protocol/nips/blob/master/44.md), [nostr-tools](https://github.com/nbd-wtf/nostr-tools), [Damus relay](https://relay.damus.io), [nos.lol](https://nos.lol).
 
 ## Inhoud en beelden
 
@@ -92,22 +65,21 @@ Hoofdbron: de door Jos aangeleverde **33.41P Werkvergunningen**, revisie **07-05
 
 ## Voor de ontwikkelaar
 
-De broncode is beschikbaar voor volgende wijzigingen. Alleen de ontwikkelaar gebruikt `npm ci`, `npm run check`, `npm run build` en `npm test`. Jos publiceert de al meegeleverde `dist`.
+Gebruik `npm ci`, `npm run check`, `npm test` en `npm run build`. Commit `dist` mee; Netlify hoeft geen build uit te voeren.
 
 | Bestand | Functie |
 | --- | --- |
-| `src/questions.json` | Tien cases, samenvattingen, categorieën en feedback |
+| `src/questions.json` | Tien cases, categorieën en feedback |
 | `scripts/cases.py` | Redactionele generator voor dezelfde inhoud |
 | `src/question-view.tsx` | Categorieknoppen, beelden en feedback |
-| `src/live-session.ts` | Tijdelijke WebRTC-sessies, herstel en wissen |
+| `src/live-session.ts` | Groepsprotocol, ontvangstbevestiging, herstel en wissen |
+| `src/relay-peer.ts` | Directe route met versleutelde WebSocket-terugval |
 | `src/live-trainer.tsx` | Sessie-QR, deelnemers en antwoordverdelingen |
 | `src/live-learner.tsx` | Voornaam, deelname en volgen van nabespreking |
 | `dist/` | De complete direct te publiceren website |
 
 ## Verificatie
 
-De regressieset controleert de inhoud, categorieknoppen, ontvangstbevestiging, verborgen antwoorden, nabespreking, tijdelijke gegevens en afsluiten/wissen. Vijftien transporttests simuleren meerdere deelnemers (ook met dezelfde naam), nieuwe deelname tijdens het oefenen, antwoorden kiezen tijdens uitval, hervatten na twee minuten achtergrondpauze, vertraagde timers, een twintig seconden durende verbindingsopbouw, een mislukte eerste transportinitialisatie, herstel met dezelfde sessiecode, een verloren eerste bevestiging en een mislukte eerste aansluiting. Een extra configuratietest controleert dat de standaardfabriek voor beide rollen de VCH-instellingen gebruikt. TypeScript-controle, productiebuild en alle zestien tests zijn geslaagd.
+TypeScript-controle, productiebuild en **twintig geautomatiseerde tests** slagen. Vijftien bestaande sessietests controleren onder meer meerdere deelnemers, dezelfde namen, ontvangstbevestiging, vertraagde aansluiting, verloren bevestiging, uitval, hervatten en wissen. Eén configuratietest behoudt de directe VCH-route. Vier nieuwe tests gebruiken de echte versleuteling en ondertekening met een gesimuleerde relay: twee deelnemers met uitgeschakelde WebRTC, antwoordbevestiging en nabespreking/wissen; binding tussen code en trainerssleutel; herstel na verlies van alle WebSockets; en herbouw van het transport met behoud van de sessie-identiteit. De tests controleren ook dat namen en antwoorden niet leesbaar over de relay gaan en dat een derde deelnemer ze niet kan ontsleutelen. Inhoud, categorieknoppen en statische publicatie worden afzonderlijk gecontroleerd.
 
-De transportinstellingen in de drie VCH-bronnen zijn vergeleken met de AEB-productiecode en bleken gelijk, afgezien van de modulegebonden identificatie. De browserproef controleert de eerste wacht- en foutmeldingen. Een volledige live gegevensverbinding kon vanuit deze testomgeving niet worden bevestigd. Gesimuleerde tests bewijzen geen echte trainer-telefoonverbinding op de leslocatie; rapporteer die niet als volledig geslaagde netwerktest.
-
-Een gesimuleerde verbinding bewijst geen bereikbaarheid door een bedrijfsfirewall. Een browser of besturingssysteem kan een tabblad volledig stoppen of uit het geheugen verwijderen; zonder server of permanente opslag is herstel van zo'n verwijderde trainerssessie niet mogelijk. Voorkom daarom sluiten of vernieuwen van het trainersscherm tijdens een les. De bestaande PeerJS- en WebRTC-diensten blijven nodig.
+Daarnaast is in afzonderlijke browserpagina’s via de echte openbare verbindingsdiensten live gegevensoverdracht getest. Dit is aanvullend op de gesimuleerde tests, geen vervanging voor een proef op de leslocatie. Een browser kan een tabblad volledig uit het geheugen verwijderen; zonder permanente opslag kan die verwijderde trainerssessie niet worden teruggehaald.

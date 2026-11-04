@@ -4,6 +4,7 @@ node_modules/
 .openai/
 .test-runtime/
 .test-peer/
+.test-relay/
 *.tsbuildinfo
 .env
 .env.*

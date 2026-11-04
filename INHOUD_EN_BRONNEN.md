@@ -1,4 +1,4 @@
-# Inhoud en antwoordoverzicht — AEB risico-oefenapp 1.2.1
+# Inhoud en antwoordoverzicht — AEB risico-oefenapp 1.3.0
 
 4 november 2026. Tien nieuwe formatieve cases, geen reproductie van examens A/B. Beoogd niveau: toepassen en analyseren. Twee laag, vijf midden en drie hoog. Het accent ligt op het onderbouwen van midden versus hoog.
 
@@ -196,3 +196,13 @@ De inhoud van de tien cases, categorieën en procedurefragmenten is ongewijzigd.
 Deze versie behoudt die aanpak en voegt geen extra aanbieder of sleutel toe. De eerste deelname moet door de trainer zijn bevestigd voordat vragen worden vrijgegeven. Een uitblijvende eerste bevestiging leidt tot een veilige herhaling van de aanmelding; dezelfde deelnemer wordt niet dubbel toegevoegd. De trainer toont vóór de eerste verbinding expliciet dat de sessie op deelnemers wacht. Een niet-afgeronde aansluiting geeft een gerichte melding. Herstel na latere korte uitval, tien minuten verlies-timeout en afsluiten/wissen blijven gelden.
 
 De oude TURN-verwijzingen in de PeerJS-standaardconfiguratie zijn geen bewijs van de oorzaak van het specifieke incident: een directe verbinding kan zonder relay werken. De verschillen tussen netwerkpaden en de exacte oorzaak op de telefoon zijn niet vastgesteld. TypeScript-controle, productiebuild, vijftien gesimuleerde transporttests en één configuratietest slagen. Een volledige echte trainer-telefoonverbinding is vanuit deze testomgeving niet bevestigd.
+
+## Technische correctie 1.3.0 van 4 november 2026
+
+De inhoud van de tien cases, antwoordcategorieën, beelden en procedurefragmenten is ongewijzigd. De eerste deelname blijft afhankelijk van bevestiging door de trainer.
+
+De directe PeerJS/WebRTC-route blijft behouden. Als die na drie seconden niet geopend is, gebruikt de deelnemer een tweede route via beveiligde WebSockets op poort 443. De publieke Nostr-relays relay.damus.io en nos.lol vereisen geen account of vaste dienstsleutel. NIP-44 v2 versleutelt de groepsgegevens per trainer/deelnemer; NIP-01-berichten van het tijdelijke type 20049 en een vervaltag beperken de bedoelde levensduur. De app verwacht geen opslag op die route, maar kan het gedrag van onafhankelijke relaybeheerders niet garanderen. Tijdelijke openbare sleutels en netwerkmetadata zijn zichtbaar; namen en antwoorden zijn versleuteld. Elke sessie krijgt willekeurige sleutels in werkgeheugen en een code die aan de openbare trainerssleutel is gebonden.
+
+Er zijn geen eigen serverfuncties, database of persoonlijke API-geheimen toegevoegd. Ontvangstbevestiging, herstel, nabespreking, verborgen goede antwoorden en afsluiten/wissen blijven behouden. Na volledige WebSocket-uitval of transportherbouw herstellen dezelfde deelnemers met hun laatste antwoordrevisie. Groepsgegevens staan uitsluitend in browserwerkgeheugen; het protocol en de beperkingen van openbare verbindingsdiensten staan in de README.
+
+TypeScript, productiebuild en twintig geautomatiseerde tests slagen, inclusief vier nieuwe tests met echte cryptografie en gesimuleerde relay. Ook is live browseroverdracht via de openbare diensten getest. De eigen Honor-telefoon en bedrijfswifi moeten op locatie worden gecontroleerd. Geschiedenis verwijderen verhelpt een ontbrekend netwerkpad niet.

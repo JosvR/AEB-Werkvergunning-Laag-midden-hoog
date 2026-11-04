@@ -3,12 +3,20 @@ import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { mkdir, rm } from 'node:fs/promises';
 
-test('trainer en deelnemer gebruiken de VCH-transportinstellingen zonder extra aanbieder of sleutel', async () => {
+test('de directe VCH-route blijft beschikbaar naast de nieuwe verbinding zonder vaste sleutel', async () => {
   await mkdir('.test-peer', { recursive: true });
   after(() => rm('.test-peer', { recursive: true, force: true }));
   await build({ entryPoints: ['src/live-session.ts'], outfile: '.test-peer/session.mjs', bundle: true, platform: 'node', format: 'esm', plugins: [{
     name: 'capture-peer-options', setup(builder) {
       builder.onResolve({ filter: /^peerjs$/ }, () => ({ path: 'peerjs', namespace: 'capture' }));
+      builder.onResolve({ filter: /^\.\/relay-peer$/ }, () => ({ path: 'relay', namespace: 'relay-fixture' }));
+      builder.onLoad({ filter: /.*/, namespace: 'relay-fixture' }, () => ({ contents: `
+        import {EventEmitter} from 'node:events';
+        export function createRelayIdentity(){return {secret:new Uint8Array(32),publicKey:'0'.repeat(64)}}
+        export function roomCodeForKey(){return 'ABCDEFGH2345'}
+        export class RelayPeer extends EventEmitter {open=true;disconnected=false;destroyed=false;destroy(){this.destroyed=true}}
+        export class FallbackPeer extends EventEmitter {open=true;disconnected=false;destroyed=false;constructor(d,r){super();this.d=d;this.r=r}connect(...a){return this.d.connect(...a)}destroy(){this.d.destroy();this.r.destroy();this.destroyed=true}}
+      `, loader:'js'}));
       builder.onLoad({ filter: /.*/, namespace: 'capture' }, () => ({ contents: `
         import { EventEmitter } from 'node:events';
         export const util = { defaultConfig: {

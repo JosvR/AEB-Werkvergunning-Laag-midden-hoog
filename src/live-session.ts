@@ -1,4 +1,5 @@
 import questionData from './questions.json';
+import { createRelayIdentity, roomCodeForKey, RelayPeer, FallbackPeer, type RelayIdentity } from './relay-peer';
 import { PROTOCOL, PEER_PREFIX, HEARTBEAT_MS, STALE_MS, LOST_MS, MAX_SESSION_MS, MAX_PARTICIPANTS, RECONNECT_MS, CONNECT_TIMEOUT_MS, newRoomCode, newClientId, normalizeCode, cleanName, validEnvelope, validateProgress } from './live-protocol.mjs';
 
 export type Progress = { answers: Record<number, number>; revision: number; current: number; finished: boolean };
@@ -8,18 +9,21 @@ export type HostSnapshot = Review & { active: boolean; status: 'idle' | 'connect
 export type GuestSnapshot = Review & { status: 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error' | 'closed'; joined: boolean; name: string; progress: Progress; acknowledged: number; error: string };
 type Connection = { open: boolean; peer: string; on: (event: string, fn: (...args: any[]) => void) => any; send: (data: any) => void; close: () => void };
 type PeerLike = { open?: boolean; destroyed: boolean; disconnected: boolean; on: (event: string, fn: (...args: any[]) => void) => any; connect: (id: string, options: any) => Connection; reconnect: () => void; destroy: () => void };
-export type PeerFactory = (id?: string) => Promise<PeerLike>;
+export type PeerFactory = (id?: string, identity?: RelayIdentity) => Promise<PeerLike>;
 const emptyProgress = (): Progress => ({ answers: {}, revision: 0, current: 1, finished: false });
 const emptyReview = (): Review => ({ phase: 'practice', question: 1, revealed: false });
 export const emptyHost = (): HostSnapshot => ({ ...emptyReview(), active: false, status: 'idle', code: '', error: '', participants: [] });
 export const emptyGuest = (): GuestSnapshot => ({ ...emptyReview(), status: 'idle', joined: false, name: '', progress: emptyProgress(), acknowledged: -1, error: '' });
 const cloneProgress = (p: Progress): Progress => ({ answers: { ...p.answers }, revision: p.revision, current: p.current, finished: p.finished });
-const peerFactory: PeerFactory = async id => {
+const peerFactory: PeerFactory = async (id, identity = createRelayIdentity()) => {
   const { default: Peer, util } = await import('peerjs');
-  // Same transport settings as all three VCH apps; no additional service or key.
+  // Keep the direct VCH route. After three seconds without a working data
+  // channel, use an encrypted, ephemeral WebSocket route over TLS/443.
   const defaults = util.defaultConfig;
   const tcpRelays = defaults.iceServers.filter(server => 'username' in server).map(server => ({ ...server, urls: (Array.isArray(server.urls) ? server.urls : [server.urls]).filter((url): url is string => typeof url === 'string' && url.startsWith('turn:')).map(url => `${url}?transport=tcp`) }));
-  return new Peer(id || `aeb-risico-guest-${newClientId()}`, { secure: true, debug: 0, config: { ...defaults, iceServers: [...defaults.iceServers, ...tcpRelays] } }) as unknown as PeerLike;
+  const peerId = id || `aeb-risico-guest-${newClientId()}`;
+  const direct = new Peer(peerId, { secure: true, debug: 0, config: { ...defaults, iceServers: [...defaults.iceServers, ...tcpRelays] } }) as unknown as PeerLike;
+  return new FallbackPeer(direct, new RelayPeer(peerId, identity));
 };
 function send(connection: Connection, message: object) {
   if (connection.open) { try { connection.send({ protocol: PROTOCOL, ...message }); } catch { /* Connection recovery handles loss. */ } }
@@ -47,6 +51,7 @@ export class TrainerSession {
   private recoveryUntil = 0;
   private rebuilding = false;
   private retryAt = 0;
+  private identity?: RelayIdentity;
   constructor(private changed: (value: HostSnapshot) => void, private factory: PeerFactory = peerFactory) {}
   private emit() { this.changed({ ...this.snapshot, participants: [...this.records.values()].map(p => ({ ...p, answers: { ...p.answers } })) }); }
   get active() { return this.snapshot.active; }
@@ -54,7 +59,8 @@ export class TrainerSession {
     if (this.snapshot.active || this.closed) return;
     ++this.epoch;
     this.startedAt = this.lastTickAt = Date.now();
-    this.snapshot = { ...emptyHost(), active: true, status: 'connecting', code: newRoomCode() };
+    this.identity = createRelayIdentity();
+    this.snapshot = { ...emptyHost(), active: true, status: 'connecting', code: roomCodeForKey(this.identity.publicKey) };
     this.emit();
     this.startTimer = setTimeout(() => { if (this.snapshot.status === 'connecting') { this.snapshot.status = 'reconnecting'; this.snapshot.error = networkError(); this.emit(); } }, 20000);
     // Start recovery before loading the transport, so a failed first load can retry.
@@ -146,7 +152,7 @@ export class TrainerSession {
     this.rebuilding = true; this.retryAt = Date.now() + RECONNECT_MS;
     const epoch = this.epoch;
     try {
-      const peer = await this.factory(PEER_PREFIX + this.snapshot.code);
+      const peer = await this.factory(PEER_PREFIX + this.snapshot.code, this.identity);
       if (this.closed || epoch !== this.epoch) { peer.destroy(); return; }
       this.peer = peer;
       const opened = () => {
@@ -198,9 +204,11 @@ export class TrainerSession {
     this.records.clear(); this.connections.clear(); this.pending.clear();
     this.snapshot = emptyHost(); this.emit();
     const peer = this.peer; this.peer = undefined;
-    const dispose = () => { for (const c of connections) c.close(); peer?.destroy(); };
+    const identity = this.identity;
+    const dispose = () => { for (const c of connections) c.close(); peer?.destroy(); identity?.secret.fill(0); };
     // Let the reliable channel deliver the close message before destroying it.
     if (immediate) dispose(); else setTimeout(dispose, 1000);
+    this.identity = undefined;
   }
 }
 
@@ -220,11 +228,13 @@ export class LearnerSession {
   private lastTickAt = 0;
   private resumeUntil = 0;
   private epoch = 0;
+  private identity?: RelayIdentity;
   constructor(private code: string, private changed: (value: GuestSnapshot) => void, private factory: PeerFactory = peerFactory) {}
   private emit() { this.changed({ ...this.snapshot, progress: cloneProgress(this.snapshot.progress) }); }
   async start(name: string) {
     if (!normalizeCode(this.code) || !cleanName(name) || this.disposed || this.snapshot.status !== 'idle') return;
     this.snapshot = { ...emptyGuest(), status: 'connecting', name: cleanName(name) };
+    this.identity = createRelayIdentity();
     this.startedAt = this.lastSeen = this.lastTickAt = Date.now(); this.emit();
     this.timer = setInterval(() => this.tick(), HEARTBEAT_MS);
     await this.createPeer();
@@ -234,7 +244,7 @@ export class LearnerSession {
     this.creatingPeer = true;
     const epoch = ++this.epoch;
     try {
-      const peer = await this.factory();
+      const peer = await this.factory(undefined, this.identity);
       if (this.disposed || epoch !== this.epoch) { peer.destroy(); return; }
       this.peer = peer;
       const opened = () => { if (!this.disposed && this.peer === peer) this.connect(); };
@@ -323,6 +333,7 @@ export class LearnerSession {
     if (this.connection) send(this.connection, { type: 'leave' });
     this.connection?.close(); this.peer?.destroy();
     this.connection = undefined; this.peer = undefined; this.clientId = ''; this.code = ''; this.welcomed = false; this.connecting = false;
+    this.identity?.secret.fill(0); this.identity = undefined;
     this.snapshot = { ...emptyGuest(), status, error }; this.emit();
   }
 }

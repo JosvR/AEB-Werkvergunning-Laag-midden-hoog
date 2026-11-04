@@ -14,7 +14,7 @@ assert.match(settings, /publish\s*=\s*"dist"/);
 assert.doesNotMatch(settings, /\[functions|\[plugins|\[\[plugins/);
 const source = await readFile('src/learning-app.tsx', 'utf8');
 assert.doesNotMatch(source, /\/api\/|XMLHttpRequest|sendBeacon|new WebSocket|new EventSource/);
-for (const file of ['src/live-session.ts', 'src/live-protocol.mjs', 'src/live-hooks.ts', 'src/live-learner.tsx', 'src/live-trainer.tsx']) {
+for (const file of ['src/relay-peer.ts', 'src/live-session.ts', 'src/live-protocol.mjs', 'src/live-hooks.ts', 'src/live-learner.tsx', 'src/live-trainer.tsx']) {
   const text = await readFile(file, 'utf8');
   assert.doesNotMatch(text, /localStorage|sessionStorage|indexedDB|sendBeacon|\/\.netlify\/functions|\/api\//, `${file}: live groepsgegevens mogen niet permanent worden opgeslagen.`);
 }
