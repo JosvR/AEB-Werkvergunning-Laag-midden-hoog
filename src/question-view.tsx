@@ -16,7 +16,7 @@ export default function QuestionView({ q, choice, onChoose, disabled, revealed, 
     <div className="question-text">
       <p className="eyebrow">CASE {q.n} VAN {questionData.length}</p><h2>{q.title}</h2>
       <p className="case-story">{q.stem}</p>
-      {q.image && <figure className="case-figure"><button className="image-button" aria-label={`Vergroot de afbeelding bij ${q.title}`} onClick={() => imageDialog.current?.showModal()}><img src={q.image} alt={q.imageAlt} /><span className="image-zoom"><ZoomIn size={16} /> Vergroten</span></button><figcaption>Schematische trainingsillustratie. Beoordeel de feiten in de case.</figcaption></figure>}
+      {q.image && <figure className="case-figure"><button className="image-button" aria-label={`Vergroot de afbeelding bij ${q.title}`} onClick={() => imageDialog.current?.showModal()}><img src={q.image} alt={q.imageAlt} width="960" height="600" /><span className="image-zoom"><ZoomIn size={16} /> Vergroten</span></button><figcaption>Schematische trainingsillustratie. Beoordeel de feiten in de case.</figcaption></figure>}
       <div className="classify-area">
         <h3>{onChoose ? 'Welke categorie past bij deze situatie?' : 'Laag, midden of hoog?'}</h3>
         {onChoose && <p className="choice-help">Druk op Laag, Midden of Hoog. Je kunt je keuze nog wijzigen.</p>}

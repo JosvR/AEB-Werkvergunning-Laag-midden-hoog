@@ -26,9 +26,9 @@ function broker() {
     close(){if(this.readyState===3)return;this.readyState=3;clients.delete(this);this.emit('close');}
   }
   class NoDirect extends Signals {open=false;destroyed=false;disconnected=true;connect(){throw Error('ICE geblokkeerd')}reconnect(){}destroy(){this.destroyed=true}}
-  const peers=[];
-  const factory=async(id,identity)=>{const peer=new FallbackPeer(new NoDirect(),new RelayPeer(id||'guest-'+crypto.randomUUID(),identity,['wss://fixture.invalid'],()=>new Socket()));peers.push(peer);return peer;};
-  return {factory,wire,clients,peers};
+  const peers=[],directs=[];
+  const factory=async(id,identity)=>{const direct=new NoDirect();directs.push(direct);const peer=new FallbackPeer(direct,new RelayPeer(id||'guest-'+crypto.randomUUID(),identity,['wss://fixture.invalid'],()=>new Socket()));peers.push(peer);return peer;};
+  return {factory,wire,clients,peers,directs};
 }
 test('zonder werkende WebRTC: twee deelnemers, antwoorden, ACK, nabespreking en wissen via versleutelde tijdelijke berichten',async t=>{
   t.mock.timers.enable({apis:['setTimeout','setInterval','Date'],now:100000});
@@ -38,6 +38,11 @@ test('zonder werkende WebRTC: twee deelnemers, antwoorden, ACK, nabespreking en 
   try {
     await first.start('Test Anna');await second.start('Test Bram');await flush();t.mock.timers.tick(4000);await flush();
     assert.equal(a.status,'connected');assert.equal(b.status,'connected');assert.equal(h.participants.length,2);
+    // A delayed incoming PeerJS object from the abandoned ICE route must not
+    // start a pending-participant warning after successful relay enrollment.
+    net.directs[0].emit('connection',Object.assign(new Signals(),{open:false,close(){this.emit('close')}}));
+    for(let i=0;i<9;i++){t.mock.timers.tick(4000);await flush();}
+    assert.equal(h.error,'');assert.equal(a.status,'connected');
     first.update({answers:{1:1,2:2},current:3,finished:false});second.update({answers:{1:4},current:2,finished:false});await flush();
     assert.deepEqual(h.participants.find(p=>p.name==='Test Anna').answers,{1:1,2:2});
     assert.equal(a.acknowledged,a.progress.revision);

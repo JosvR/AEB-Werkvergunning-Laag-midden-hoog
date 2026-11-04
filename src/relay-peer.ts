@@ -237,7 +237,13 @@ export class FallbackPeer extends Signals {
     super();
     const opened = () => { if (!this.destroyed) { this.open = true; this.emit('open'); } };
     for (const peer of [direct, relay]) {
-      peer.on('open', opened); peer.on('connection', c => { if (!this.destroyed) this.emit('connection', c); else c.close(); });
+      peer.on('open', opened); peer.on('connection', c => {
+        // An abandoned ICE attempt is not a participant. Only pass usable
+        // channels to the session's hello/timeout tracking; otherwise its old
+        // pending timer can warn after the same learner joined via the relay.
+        const accept = () => { if (!this.destroyed) this.emit('connection', c); else c.close(); };
+        if (peer === direct && !c.open) c.on('open', accept); else accept();
+      });
       peer.on('disconnected', () => { if (!this.destroyed && this.disconnected) this.emit('disconnected'); });
       peer.on('error', () => { if (!this.destroyed && this.disconnected) this.emit('error', { type: 'network' }); });
     }

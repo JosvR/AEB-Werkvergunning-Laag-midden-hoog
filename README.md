@@ -1,16 +1,16 @@
 # AEB — Laag, midden of hoog risico?
 
-**Versie 1.3.0 · 4 november 2026.** Tien praktijkcases voor de AEB-training werkvergunningen, met drie knoppen **Laag**, **Midden** en **Hoog**, vijf vergrootbare illustraties en een live trainersoverzicht.
+**Versie 1.3.1 · 4 november 2026.** Tien praktijkcases voor de AEB-training werkvergunningen, met drie knoppen **Laag**, **Midden** en **Hoog**, vijf vergrootbare illustraties en een live trainersoverzicht.
 
 De complete website staat in **`dist/`**. Geen installatie of build nodig voor publicatie. Geen eigen server, serverfuncties, database of persoonlijke API-sleutels.
 
-## Verbindingsreparatie in 1.3.0
+## Verbindingsreparatie in 1.3.1
 
 Versie 1.2.1 verbeterde de aanmelding, maar behield uitsluitend het directe WebRTC-antwoordkanaal. Wanneer dat kanaal niet tot stand kwam, bleven telefoon en trainer op elkaar wachten. Het bereiken van de PeerJS-verbindingsdienst bewijst nog niet dat antwoorden tussen beide browsers kunnen stromen. De VCH-apps gebruiken dezelfde directe instellingen en bieden op dit punt geen andere route.
 
 Deze versie behoudt PeerJS/WebRTC en voegt een tweede route toe: **versleutelde tijdelijke berichten via beveiligde WebSockets (TLS, poort 443)**. Zonder geopend direct antwoordkanaal schakelt de deelnemer na drie seconden automatisch over. Deze route vraagt geen onderlinge directe netwerkverbinding en werkt zonder account of vaste dienstsleutel. De vragen worden pas vrijgegeven nadat de trainer de deelname heeft bevestigd. Elke antwoordrevisie krijgt een afzonderlijke ontvangstbevestiging.
 
-Het verwijderen van browsergeschiedenis lost een ontbrekend antwoordkanaal niet op. Sluit voor de nieuwe les de oude app-tabbladen, open beide apparaten opnieuw en controleer rechtsboven **v1.3.0**. Start een nieuwe sessie en scan de nieuwe QR. Controleer eerst één deelnemer en één proefantwoord bij de trainer.
+Het verwijderen van browsergeschiedenis lost een ontbrekend antwoordkanaal niet op. Sluit voor de nieuwe les de oude app-tabbladen, open beide apparaten opnieuw en controleer rechtsboven **v1.3.1**. Start een nieuwe sessie en scan de nieuwe QR. Controleer eerst één deelnemer en één proefantwoord bij de trainer.
 
 ## Publiceren via GitHub en Netlify
 
@@ -24,7 +24,7 @@ Repository: **JosvR/AEB-Werkvergunning-Laag-midden-hoog**. Publiceer de meegelev
 | Publish directory | `dist` |
 | Functions / database / omgevingsvariabelen | Niet nodig |
 
-`netlify.toml` bevat deze instellingen. De bestaande GitHub-koppeling publiceert nieuwe commits op `main` automatisch. `downloads/AEB-Laag-midden-hoog-v1.3.0.zip` bevat deze handleiding, de inhoudsverantwoording, `netlify.toml` en de complete `dist/`. Bij handmatige publicatie uploadt u alleen de uitgepakte map `dist`.
+`netlify.toml` bevat deze instellingen. De bestaande GitHub-koppeling publiceert nieuwe commits op `main` automatisch. `downloads/AEB-Laag-midden-hoog-v1.3.1.zip` bevat deze handleiding, `netlify.toml` en de complete `dist/`. Bij handmatige publicatie uploadt u alleen de uitgepakte map `dist`.
 
 ## Gebruik in de les
 
@@ -80,6 +80,6 @@ Gebruik `npm ci`, `npm run check`, `npm test` en `npm run build`. Commit `dist` 
 
 ## Verificatie
 
-TypeScript-controle, productiebuild en **twintig geautomatiseerde tests** slagen. Vijftien bestaande sessietests controleren onder meer meerdere deelnemers, dezelfde namen, ontvangstbevestiging, vertraagde aansluiting, verloren bevestiging, uitval, hervatten en wissen. Eén configuratietest behoudt de directe VCH-route. Vier nieuwe tests gebruiken de echte versleuteling en ondertekening met een gesimuleerde relay: twee deelnemers met uitgeschakelde WebRTC, antwoordbevestiging en nabespreking/wissen; binding tussen code en trainerssleutel; herstel na verlies van alle WebSockets; en herbouw van het transport met behoud van de sessie-identiteit. De tests controleren ook dat namen en antwoorden niet leesbaar over de relay gaan en dat een derde deelnemer ze niet kan ontsleutelen. Inhoud, categorieknoppen en statische publicatie worden afzonderlijk gecontroleerd.
+TypeScript-controle, productiebuild en **twintig geautomatiseerde tests** slagen. Vijftien bestaande sessietests controleren onder meer meerdere deelnemers, dezelfde namen, ontvangstbevestiging, vertraagde aansluiting, verloren bevestiging, uitval, hervatten en wissen. Eén configuratietest behoudt de directe VCH-route. Vier nieuwe tests gebruiken de echte versleuteling en ondertekening met een gesimuleerde relay: twee deelnemers met uitgeschakelde WebRTC, antwoordbevestiging en nabespreking/wissen; binding tussen code en trainerssleutel; herstel na verlies van alle WebSockets; en herbouw van het transport met behoud van de sessie-identiteit. De tests controleren ook dat namen en antwoorden niet leesbaar over de relay gaan en dat een derde deelnemer ze niet kan ontsleutelen. Een verlaten directe verbindingspoging geeft na geslaagde deelname via de tweede route geen onterechte aansluitwaarschuwing. Afbeeldingen reserveren vooraf hun ruimte, zodat de antwoordknoppen bij het laden op hun plek blijven. Inhoud, categorieknoppen en statische publicatie worden afzonderlijk gecontroleerd.
 
 Daarnaast is in afzonderlijke browserpagina’s via de echte openbare verbindingsdiensten live gegevensoverdracht getest. Dit is aanvullend op de gesimuleerde tests, geen vervanging voor een proef op de leslocatie. Een browser kan een tabblad volledig uit het geheugen verwijderen; zonder permanente opslag kan die verwijderde trainerssessie niet worden teruggehaald.
