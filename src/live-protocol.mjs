@@ -5,6 +5,8 @@ export const STALE_MS = 90000;
 // Short interruptions do not erase a participant's answers.
 export const LOST_MS = 10 * 60 * 1000;
 export const RECONNECT_MS = 5000;
+// Give ICE/TURN negotiation time to finish before replacing an in-flight attempt.
+export const CONNECT_TIMEOUT_MS = 30000;
 export const MAX_SESSION_MS = 8 * 60 * 60 * 1000;
 export const MAX_PARTICIPANTS = 80;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

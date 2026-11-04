@@ -12,6 +12,7 @@ body{font-family:Arial,Helvetica,sans-serif}button:focus-visible,a:focus-visible
 .risk-choice{display:flex;align-items:center;justify-content:center;gap:10px;min-height:64px;padding:18px 12px;border:2px solid #b7b8cf;border-radius:12px;background:#fff;color:var(--navy);font:inherit;cursor:pointer;touch-action:manipulation}
 .risk-choice strong{font-size:22px}.risk-choice:hover:not(:disabled){border-color:var(--navy);background:#f0eff8}
 .risk-choice.selected{background:var(--navy);border-color:var(--navy);color:#fff}
+.risk-choice.selected:hover:not(:disabled){background:var(--navy-dark);border-color:var(--navy-dark);color:#fff}
 .risk-choice:focus-visible{outline:3px solid #8b6bb4;outline-offset:3px}
 .risk-choice:disabled{cursor:default;opacity:.75}.risk-choice.revealed-correct{background:#e5efd1;border-color:#6a9140;color:#263c18}
 .risk-choice.revealed-wrong{border-color:#b40032}.choice-help,.choice-status{color:#65677e;line-height:1.5}

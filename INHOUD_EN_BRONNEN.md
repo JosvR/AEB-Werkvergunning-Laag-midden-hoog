@@ -1,6 +1,6 @@
-# Inhoud en antwoordoverzicht — AEB risico-oefenapp 1.1.0
+# Inhoud en antwoordoverzicht — AEB risico-oefenapp 1.1.1
 
-3 november 2026. Tien nieuwe formatieve cases, geen reproductie van examens A/B. Beoogd niveau: toepassen en analyseren. Twee laag, vijf midden en drie hoog. Het accent ligt op het onderbouwen van midden versus hoog.
+4 november 2026. Tien nieuwe formatieve cases, geen reproductie van examens A/B. Beoogd niveau: toepassen en analyseren. Twee laag, vijf midden en drie hoog. Het accent ligt op het onderbouwen van midden versus hoog.
 
 Hoofdbron: door Jos aangeleverde 33.41P Werkvergunningen, revisie 07-05-2026, §4.2–4.4 (p.7–10). De concrete risicoanalyse, toepasselijke dekking en invloed van taak, installatie en omgeving zijn bepalend. Er is geen zelfbedachte puntenmatrix, maximumaandeel hoog of vast gewicht-/dieptecriterium toegevoegd. De verlener heeft volgens §4.3 het laatste woord.
 
@@ -183,6 +183,8 @@ Een kleine flexibele koppeling van een doseerwaterpomp moet met een nieuw type h
 
 De cases bereiden voor op het onderbouwen van classificaties, herkennen van onvoldoende dekking door een instructie, installatie-/omgevingsinvloeden en het verschil tussen een TRA en een risicocategorie. Situaties en formuleringen zijn nieuw. De specifieke deskundigencorrecties over ondertekening na de LMRA en de ontvanger bij alarm zijn geen onderwerp van deze oefening; daarover worden dus geen afwijkende procedureteksten geciteerd.
 
-## Technische correctie 1.1.0 van 3 november 2026
+## Technische correctie 1.1.1 van 4 november 2026
 
 De tien cases, categorieën, procedurecitaten en inhoudelijke toelichtingen zijn ongewijzigd. Deelnemers kiezen met drie knoppen Laag, Midden en Hoog; de sleepbediening is verwijderd. Groepsverbindingen herstellen bij terugkeer naar de pagina en bij internetherstel. Korte uitval blokkeert het kiezen niet; ontvangst blijft afhankelijk van een bevestiging door de trainer. De verlies-timeout bedraagt tien minuten. Expliciet afsluiten/wissen en de maximale sessieduur van acht uur blijven gelden. Namen en groepsantwoorden staan uitsluitend in werkgeheugen.
+
+Trage verbindingsopbouw wordt niet langer elke vijf seconden afgebroken. Ook een mislukte eerste initialisatie wordt automatisch opnieuw geprobeerd. De trainer en deelnemer kunnen herstel activeren zonder de pagina te vernieuwen. Een eerder verlaten sessie heeft geen invloed op een nieuwe code. De oorspronkelijke productieversie sloot deelname al na zestig seconden zonder contact; dat kon de gemelde afsluitmelding veroorzaken.

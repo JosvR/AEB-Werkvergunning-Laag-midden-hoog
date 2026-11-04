@@ -1,17 +1,19 @@
 # AEB — Laag, midden of hoog risico?
 
-**Versie 1.1.0 · 3 november 2026.** Tien nieuwe praktijkcases voor de AEB-training werkvergunningen. Deelnemers kiezen met drie knoppen: **Laag**, **Midden** of **Hoog**. Slepen is niet meer nodig; toetsenbordbediening blijft mogelijk. Vijf cases hebben een vergrootbare schematische illustratie. De startpagina gebruikt een foto van de AEB-website en de logo’s van AEB en Deltalinqs Training & Services.
+**Versie 1.1.1 · 4 november 2026.** Tien nieuwe praktijkcases voor de AEB-training werkvergunningen. Deelnemers kiezen met drie knoppen: **Laag**, **Midden** of **Hoog**. Slepen is niet meer nodig; toetsenbordbediening blijft mogelijk. Vijf cases hebben een vergrootbare schematische illustratie. De startpagina gebruikt een foto van de AEB-website en de logo’s van AEB en Deltalinqs Training & Services.
 
 De complete website staat in **`dist/`**, met `index.html` direct in die map. **U hoeft niets te installeren of te bouwen.** Geen database, eigen server, serverfuncties of persoonlijke API-sleutels.
 
-## Hersteld in versie 1.1.0
+## Hersteld in versie 1.1.1
 
 - Slepen is geheel vervangen door drie gewone knoppen: **Laag**, **Midden** en **Hoog**, voor telefoon, tablet en computer.
 - Bij tijdelijk verbindingsverlies kan de deelnemer blijven kiezen. Antwoorden blijven alleen in het geheugen van de open telefoonpagina en worden na herstel doorgestuurd. Ontvangst wordt pas gemeld na bevestiging door de trainer.
 - Terugkeren naar het trainers- of deelnemersscherm, internetherstel en terugkeer uit een browserpauze starten actief verbindingsherstel.
 - Een kort onderbroken verbinding wordt niet meer na één minuut definitief gewist. De hersteltermijn is nu **tien minuten**; expliciet afsluiten en wissen blijft direct werken voor bereikbare deelnemers.
 - Een mislukte verbinding van een nieuwe deelnemer maakt de bestaande trainerssessie niet ongeldig. Gelijke voornamen blijven afzonderlijke deelnemers.
-- De trainerspagina vraagt, waar de browser dat ondersteunt, een schermvergrendeling aan om slaapstand tijdens de zichtbare les te voorkomen. Het systeem kan achtergrondtabbladen nog steeds pauzeren of verwijderen.
+- Een trage verbindingsopbouw krijgt dertig seconden om af te ronden; herstelpogingen en terugkeer naar het tabblad breken die poging niet iedere vijf seconden af. Ook een mislukte eerste initialisatie herstelt automatisch.
+- Bij een verbroken verbinding is er een knop **Verbinding opnieuw proberen**. Vernieuw daarvoor de pagina niet.
+- De trainerspagina probeert, waar de browser dat ondersteunt, het scherm wakker te houden tijdens de zichtbare les. Het systeem kan achtergrondtabbladen nog steeds pauzeren of verwijderen.
 
 ## Publiceren via GitHub en Netlify
 
@@ -29,7 +31,7 @@ De complete website staat in **`dist/`**, met `index.html` direct in die map. **
 
 `netlify.toml` legt de lege buildopdracht en publicatiemap al vast. Wanneer de repository aan Netlify gekoppeld is, publiceert Netlify nieuwe commits op `main` automatisch, tenzij automatisch publiceren daar is uitgezet.
 
-Het bestand `downloads/AEB-Laag-midden-hoog-v1.1.0.zip` bevat deze korte handleiding, `netlify.toml` en de complete `dist/`. Bij handmatige publicatie uploadt u alleen de uitgepakte map `dist`.
+Het bestand `downloads/AEB-Laag-midden-hoog-v1.1.1.zip` bevat deze korte handleiding, `netlify.toml` en de complete `dist/`. Bij handmatige publicatie uploadt u alleen de uitgepakte map `dist`.
 
 ## Gebruik in de presentatie
 
@@ -52,6 +54,8 @@ Bij **Zelf oefenen** zijn geen groepsverbinding of naam nodig. De feedback versc
 ## Afsluiten en tijdelijke gegevens
 
 Klik na de les op **Sessie afsluiten en wissen** en bevestig. Namen en antwoorden verdwijnen uit het trainersgeheugen. Verbonden telefoons ontvangen het afsluitbericht en wissen hun gegevens. Een onbereikbare telefoon wist na tien minuten zonder trainercontact, of bij hervatten na browserpauze. Onmiddellijke wissing op een offline apparaat is niet mogelijk.
+
+Een eerder gesloten sessie blokkeert een nieuwe sessie niet: elke nieuwe sessie krijgt een willekeurige nieuwe code en er worden geen groepsgegevens opgeslagen in de browser. Het overslaan van de wisknop veroorzaakt dus geen blijvende vervuiling. Gebruik de wisknop wel om bereikbare deelnemers bewust af te melden.
 
 Houd de trainerspagina tijdens de les open. Een korte schermwisseling sluit de sessie niet af; bij terugkeer probeert de app de verbinding actief te herstellen. De browser kan een achtergrondpagina echter echt verwijderen en daarmee het werkgeheugen verliezen. Vernieuwen of sluiten verliest de sessie. Er is geen serverkopie of herstelbestand. De maximale sessieduur is acht uur. Zelfstandige, anonieme oefenvoortgang staat maximaal acht uur in sessionStorage van het eigen tabblad; groepsnamen en groepsantwoorden worden daar niet opgeslagen.
 
@@ -88,6 +92,6 @@ De broncode is beschikbaar voor volgende wijzigingen. Alleen de ontwikkelaar geb
 
 ## Verificatie
 
-De regressieset controleert de inhoud, categorieknoppen, ontvangstbevestiging, verborgen antwoorden, nabespreking, tijdelijke gegevens en afsluiten/wissen. Transporttests simuleren meerdere deelnemers (ook met dezelfde naam), nieuwe deelname tijdens het oefenen, antwoorden kiezen tijdens uitval, hervatten na twee minuten achtergrondpauze, vertraagde timers en herstel met dezelfde sessiecode na verlies van de verbindingspeer.
+De regressieset controleert de inhoud, categorieknoppen, ontvangstbevestiging, verborgen antwoorden, nabespreking, tijdelijke gegevens en afsluiten/wissen. Transporttests simuleren meerdere deelnemers (ook met dezelfde naam), nieuwe deelname tijdens het oefenen, antwoorden kiezen tijdens uitval, hervatten na twee minuten achtergrondpauze, vertraagde timers, een twintig seconden durende verbindingsopbouw, een mislukte eerste transportinitialisatie en herstel met dezelfde sessiecode na verlies van de verbindingspeer. TypeScript-controle, productiebuild en de dertien transporttests zijn geslaagd. In de browser zijn de categorieknoppen, selectie, QR en sessieafsluiting gecontroleerd; de trainer bereikte de publieke verbindingsdienst. Een echte trainer-telefoonverbinding kon vanuit deze testomgeving niet volledig worden bevestigd.
 
 Een gesimuleerde verbinding bewijst geen bereikbaarheid door een bedrijfsfirewall. Een browser of besturingssysteem kan een tabblad volledig stoppen of uit het geheugen verwijderen; zonder server of permanente opslag is herstel van zo'n verwijderde trainerssessie niet mogelijk. Voorkom daarom sluiten of vernieuwen van het trainersscherm tijdens een les. De bestaande PeerJS- en WebRTC-diensten blijven nodig.

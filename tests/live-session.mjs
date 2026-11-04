@@ -14,16 +14,16 @@ const { TrainerSession, LearnerSession } = await import(pathToFileURL(resolve('.
 after(() => rm('.test-runtime', { recursive: true, force: true }));
 const flush = async () => { for (let i = 0; i < 18; i++) await Promise.resolve(); };
 
-function broker() {
+function broker({ connectionDelay = 0 } = {}) {
   const peers = new Map(); let next = 0;
   class Connection extends EventEmitter {
-    open = false; peer; remote;
+    open = false; closed = false; peer; remote;
     constructor(peer) { super(); this.peer = peer; }
     send(data) { if (this.open) queueMicrotask(() => { if (this.remote.open) this.remote.emit('data', structuredClone(data)); }); }
-    close() { if (!this.open) return; this.open = false; this.emit('close'); if (this.remote.open) { this.remote.open = false; this.remote.emit('close'); } }
+    close() { if (this.closed) return; this.closed = true; this.open = false; this.emit('close'); if (!this.remote.closed) { this.remote.closed = true; this.remote.open = false; this.remote.emit('close'); } }
   }
   class Peer extends EventEmitter {
-    destroyed = false; disconnected = false; connections = [];
+    open = false; destroyed = false; disconnected = false; connections = [];
     constructor(id) { super(); this.id = id; }
     connect(id) {
       const local = new Connection(id); const remote = new Connection(this.id); local.remote = remote; remote.remote = local;
@@ -32,7 +32,8 @@ function broker() {
         const other = peers.get(id);
         if (!other || other.destroyed) { this.emit('error', { type: 'peer-unavailable' }); return; }
         other.connections.push(remote); other.emit('connection', remote);
-        queueMicrotask(() => { local.open = remote.open = true; remote.emit('open'); local.emit('open'); });
+        const open = () => { if (local.closed || remote.closed) return; local.open = remote.open = true; remote.emit('open'); local.emit('open'); };
+        if (connectionDelay) setTimeout(open, connectionDelay); else queueMicrotask(open);
       });
       return local;
     }
@@ -42,7 +43,7 @@ function broker() {
   const factory = async id => {
     const peer = new Peer(id || `guest-${++next}`); peers.set(peer.id, peer);
     // The caller must attach handlers before the simulated signaling server replies.
-    queueMicrotask(() => queueMicrotask(() => peer.emit('open', peer.id)));
+    queueMicrotask(() => queueMicrotask(() => { peer.open = true; peer.emit('open', peer.id); }));
     return peer;
   };
   return { factory, peers };
@@ -245,4 +246,37 @@ test('vernietigde signaling-peer wordt met dezelfde sessiecode hersteld', async 
     assert.equal(state.code, code); assert.equal(state.status, 'ready'); assert.equal(guest.status, 'connected');
     assert.equal(state.participants.length, 1); assert.deepEqual(state.participants[0].answers, { 1: 4 });
   } finally { learner.dispose(); host.close(true); t.mock.timers.reset(); }
+});
+
+
+test('trage verbindingsopbouw krijgt tijd en wordt niet door heartbeat of focus vervangen', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 100000 });
+  const net = broker({ connectionDelay: 20000 }); let state; let guest;
+  const host = new TrainerSession(s => state = s, net.factory); await host.start(); await flush();
+  const learner = new LearnerSession(state.code, s => guest = s, net.factory); await learner.start('Trage verbinding'); await flush();
+  try {
+    learner.update({ answers: { 1: 4 }, current: 2, finished: false });
+    for (let i = 0; i < 3; i++) { t.mock.timers.tick(5000); await flush(); learner.resumeConnection(); }
+    const peer = [...net.peers.values()].find(p => p.id.startsWith('guest-'));
+    assert.equal(peer.connections.length, 1, 'Een lopende poging mag niet elke vijf seconden opnieuw beginnen.');
+    t.mock.timers.tick(5000); await flush();
+    assert.equal(guest.status, 'connected'); assert.equal(state.participants.length, 1);
+    assert.deepEqual(state.participants[0].answers, { 1: 4 });
+    assert.equal(guest.acknowledged, guest.progress.revision);
+  } finally { learner.dispose(); host.close(true); t.mock.timers.reset(); }
+});
+
+test('ook een mislukte eerste transportinitialisatie herstelt automatisch met dezelfde code', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 100000 });
+  const net = broker(); let state; let calls = 0;
+  const host = new TrainerSession(s => state = s, async id => {
+    if (++calls === 1) throw new Error('Tijdelijk geen internet');
+    return net.factory(id);
+  });
+  try {
+    await host.start(); await flush(); const code = state.code;
+    assert.equal(state.status, 'reconnecting');
+    t.mock.timers.tick(5000); await flush();
+    assert.equal(state.status, 'ready'); assert.equal(state.code, code); assert.equal(calls, 2);
+  } finally { host.close(true); t.mock.timers.reset(); }
 });

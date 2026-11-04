@@ -1,5 +1,5 @@
 import questionData from './questions.json';
-import { PROTOCOL, PEER_PREFIX, HEARTBEAT_MS, STALE_MS, LOST_MS, MAX_SESSION_MS, MAX_PARTICIPANTS, RECONNECT_MS, newRoomCode, newClientId, normalizeCode, cleanName, validEnvelope, validateProgress } from './live-protocol.mjs';
+import { PROTOCOL, PEER_PREFIX, HEARTBEAT_MS, STALE_MS, LOST_MS, MAX_SESSION_MS, MAX_PARTICIPANTS, RECONNECT_MS, CONNECT_TIMEOUT_MS, newRoomCode, newClientId, normalizeCode, cleanName, validEnvelope, validateProgress } from './live-protocol.mjs';
 
 export type Progress = { answers: Record<number, number>; revision: number; current: number; finished: boolean };
 export type Participant = Progress & { id: string; name: string; online: boolean; lastSeen: number };
@@ -7,7 +7,7 @@ export type Review = { phase: 'practice' | 'review'; question: number; revealed:
 export type HostSnapshot = Review & { active: boolean; status: 'idle' | 'connecting' | 'ready' | 'reconnecting' | 'error'; code: string; error: string; participants: Participant[] };
 export type GuestSnapshot = Review & { status: 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'error' | 'closed'; name: string; progress: Progress; acknowledged: number; error: string };
 type Connection = { open: boolean; peer: string; on: (event: string, fn: (...args: any[]) => void) => any; send: (data: any) => void; close: () => void };
-type PeerLike = { destroyed: boolean; disconnected: boolean; on: (event: string, fn: (...args: any[]) => void) => any; connect: (id: string, options: any) => Connection; reconnect: () => void; destroy: () => void };
+type PeerLike = { open?: boolean; destroyed: boolean; disconnected: boolean; on: (event: string, fn: (...args: any[]) => void) => any; connect: (id: string, options: any) => Connection; reconnect: () => void; destroy: () => void };
 export type PeerFactory = (id?: string) => Promise<PeerLike>;
 const emptyProgress = (): Progress => ({ answers: {}, revision: 0, current: 1, finished: false });
 const emptyReview = (): Review => ({ phase: 'practice', question: 1, revealed: false });
@@ -47,29 +47,16 @@ export class TrainerSession {
   get active() { return this.snapshot.active; }
   async start() {
     if (this.snapshot.active || this.closed) return;
-    const epoch = ++this.epoch;
+    ++this.epoch;
     this.startedAt = this.lastTickAt = Date.now();
     this.snapshot = { ...emptyHost(), active: true, status: 'connecting', code: newRoomCode() };
     this.emit();
-    this.startTimer = setTimeout(() => { if (this.snapshot.status === 'connecting') { this.snapshot.status = 'error'; this.snapshot.error = networkError(); this.emit(); } }, 20000);
-    try {
-      const peer = await this.factory(PEER_PREFIX + this.snapshot.code);
-      if (this.closed || epoch !== this.epoch) { peer.destroy(); return; }
-      this.peer = peer;
-      peer.on('open', () => { if (this.closed) return; clearTimeout(this.startTimer); this.snapshot.status = 'ready'; this.snapshot.error = ''; this.emit(); });
-      peer.on('connection', (connection: Connection) => this.accept(connection));
-      peer.on('close', () => { if (!this.closed) { this.snapshot.status = 'reconnecting'; this.emit(); } });
-      peer.on('disconnected', () => { if (!this.closed) { this.snapshot.status = 'reconnecting'; this.snapshot.error = 'Nieuwe deelnemers verbinden zodra internet terug is. Bestaande verbindingen kunnen blijven werken.'; this.emit(); } });
-      peer.on('error', (error: { type?: string }) => {
-        if (this.closed) return;
-        // A failed connection from one participant is not a failed class session.
-        if (error.type === 'peer-unavailable' || error.type === 'webrtc') return;
-        this.snapshot.status = 'reconnecting';
-        this.snapshot.error = error.type === 'unavailable-id' ? 'De sessieverbinding wordt opnieuw opgebouwd. Houd deze pagina open.' : networkError(); this.emit();
-      });
-      this.heartbeat = setInterval(() => this.tick(), HEARTBEAT_MS);
-    } catch { if (!this.closed) { this.snapshot.status = 'error'; this.snapshot.error = networkError(); this.emit(); } }
+    this.startTimer = setTimeout(() => { if (this.snapshot.status === 'connecting') { this.snapshot.status = 'reconnecting'; this.snapshot.error = networkError(); this.emit(); } }, 20000);
+    // Start recovery before loading the transport, so a failed first load can retry.
+    this.heartbeat = setInterval(() => this.tick(), HEARTBEAT_MS);
+    await this.recoverPeer();
   }
+
   private accept(connection: Connection) {
     if (this.closed || this.pending.size > MAX_PARTICIPANTS + 10) { connection.close(); return; }
     this.pending.add(connection);
@@ -136,7 +123,7 @@ export class TrainerSession {
     for (const connection of this.connections.values()) send(connection, { type: 'ping' });
     this.recoverPeer();
   }
-  private recoverPeer() {
+  private async recoverPeer() {
     if (this.closed || this.rebuilding || Date.now() < this.retryAt) return;
     if (this.peer && !this.peer.destroyed) {
       if (this.peer.disconnected) { this.retryAt = Date.now() + RECONNECT_MS; try { this.peer.reconnect(); } catch { /* Retry later. */ } }
@@ -144,15 +131,33 @@ export class TrainerSession {
     }
     this.rebuilding = true; this.retryAt = Date.now() + RECONNECT_MS;
     const epoch = this.epoch;
-    void this.factory(PEER_PREFIX + this.snapshot.code).then(peer => {
+    try {
+      const peer = await this.factory(PEER_PREFIX + this.snapshot.code);
       if (this.closed || epoch !== this.epoch) { peer.destroy(); return; }
       this.peer = peer;
-      peer.on('open', () => { if (!this.closed && this.peer === peer) { this.snapshot.status = 'ready'; this.snapshot.error = ''; this.emit(); } });
+      const opened = () => {
+        if (this.closed || this.peer !== peer) return;
+        this.retryAt = 0; clearTimeout(this.startTimer); this.snapshot.status = 'ready'; this.snapshot.error = ''; this.emit();
+      };
+      peer.on('open', opened);
+      if (peer.open) opened();
       peer.on('connection', (connection: Connection) => { if (!this.closed && this.peer === peer) this.accept(connection); else connection.close(); });
-      peer.on('disconnected', () => { if (!this.closed && this.peer === peer) { this.snapshot.status = 'reconnecting'; this.emit(); } });
-      peer.on('error', (error: { type?: string }) => { if (!this.closed && this.peer === peer && !['peer-unavailable', 'webrtc'].includes(error.type || '')) { this.snapshot.status = 'reconnecting'; this.snapshot.error = networkError(); this.emit(); } });
-    }).catch(() => { if (!this.closed) { this.snapshot.status = 'reconnecting'; this.snapshot.error = networkError(); this.emit(); } }).finally(() => { this.rebuilding = false; });
+      peer.on('close', () => { if (!this.closed && this.peer === peer) { this.snapshot.status = 'reconnecting'; this.emit(); } });
+      peer.on('disconnected', () => {
+        if (this.closed || this.peer !== peer) return;
+        this.snapshot.status = 'reconnecting';
+        this.snapshot.error = 'Nieuwe deelnemers verbinden zodra internet terug is. Bestaande verbindingen kunnen blijven werken.'; this.emit();
+      });
+      peer.on('error', (error: { type?: string }) => {
+        if (this.closed || this.peer !== peer || ['peer-unavailable', 'webrtc'].includes(error.type || '')) return;
+        // One participant's connection error must not end the class session.
+        this.snapshot.status = 'reconnecting';
+        this.snapshot.error = error.type === 'unavailable-id' ? 'De sessieverbinding wordt opnieuw opgebouwd. Houd deze pagina open.' : networkError(); this.emit();
+      });
+    } catch { if (!this.closed) { this.snapshot.status = 'reconnecting'; this.snapshot.error = networkError(); this.emit(); } }
+    finally { this.rebuilding = false; }
   }
+
   private tick() {
     if (this.closed) return;
     const now = Date.now();
@@ -197,6 +202,7 @@ export class LearnerSession {
   private disposed = false;
   private welcomed = false;
   private creatingPeer = false;
+  private connecting = false;
   private lastTickAt = 0;
   private resumeUntil = 0;
   private epoch = 0;
@@ -217,7 +223,9 @@ export class LearnerSession {
       const peer = await this.factory();
       if (this.disposed || epoch !== this.epoch) { peer.destroy(); return; }
       this.peer = peer;
-      peer.on('open', () => this.connect());
+      const opened = () => { if (!this.disposed && this.peer === peer) this.connect(); };
+      peer.on('open', opened);
+      if (peer.open) opened();
       peer.on('disconnected', () => { /* Existing data channels work independently of signaling. */ });
       peer.on('error', () => {
         if (this.disposed) return;
@@ -229,10 +237,12 @@ export class LearnerSession {
   private connect() {
     if (this.disposed || !this.peer || this.peer.destroyed || this.peer.disconnected) return;
     if (this.connection?.open && this.welcomed) return;
+    if (this.connecting && Date.now() - this.attemptAt < CONNECT_TIMEOUT_MS) return;
+    this.connecting = true;
     this.attemptAt = Date.now(); this.welcomed = false;
     let connection: Connection;
     try { connection = this.peer.connect(PEER_PREFIX + normalizeCode(this.code), { reliable: true, serialization: 'json', label: PROTOCOL }); }
-    catch { return; }
+    catch { this.connecting = false; return; }
     const previous = this.connection; this.connection = connection; previous?.close();
     connection.on('open', () => { if (this.connection === connection && !this.disposed) send(connection, { type: 'hello', clientId: this.clientId, name: this.snapshot.name }); });
     connection.on('data', (raw: unknown) => {
@@ -249,12 +259,12 @@ export class LearnerSession {
       if (!progress || !review || !['practice', 'review'].includes(review.phase) || !questionData.some(q => q.n === review.question) || typeof review.revealed !== 'boolean') return;
       if (review.phase === 'review' || progress.revision > this.snapshot.progress.revision) this.snapshot.progress = progress;
       this.snapshot = { ...this.snapshot, phase: review.phase, question: review.question, revealed: review.revealed, status: 'connected', error: '', acknowledged: progress.revision };
-      const first = !this.welcomed; this.welcomed = true; this.emit();
+      const first = !this.welcomed; this.welcomed = true; this.connecting = false; this.emit();
       if (first && review.phase === 'practice') this.flush();
     });
     const disconnected = () => {
       if (this.disposed || this.connection !== connection) return;
-      this.welcomed = false; this.attemptAt = Date.now() - RECONNECT_MS; this.snapshot.status = 'reconnecting';
+      this.welcomed = false; this.connecting = false; this.attemptAt = Date.now() - RECONNECT_MS; this.snapshot.status = 'reconnecting';
       this.snapshot.error = 'Verbinding onderbroken. Je keuzes blijven tijdelijk op je telefoon en worden na herstel doorgestuurd.'; this.emit();
     };
     connection.on('close', disconnected); connection.on('error', () => { connection.close(); disconnected(); });
@@ -273,7 +283,7 @@ export class LearnerSession {
     this.resumeUntil = Date.now() + STALE_MS;
     this.lastTickAt = Date.now();
     if (this.connection?.open && this.welcomed) { send(this.connection, { type: 'ping' }); this.flush(); }
-    else { this.attemptAt = Date.now() - RECONNECT_MS - 1; this.tick(); }
+    else { if (!this.connecting) this.attemptAt = Date.now() - RECONNECT_MS; this.tick(); }
   }
   private tick() {
     if (this.disposed) return;
@@ -289,14 +299,14 @@ export class LearnerSession {
       if (Date.now() > this.resumeUntil && Date.now() - this.lastSeen > STALE_MS) { this.connection.close(); return; }
       send(this.connection, { type: 'ping' });
       if (this.snapshot.acknowledged !== this.snapshot.progress.revision) this.flush();
-    } else if (Date.now() - this.attemptAt >= RECONNECT_MS) this.connect();
+    } else if (Date.now() - this.attemptAt >= (this.connecting ? CONNECT_TIMEOUT_MS : RECONNECT_MS)) this.connect();
   }
   dispose(status: 'idle' | 'closed' | 'error' = 'idle', error = '') {
     if (this.disposed) return;
     this.disposed = true; ++this.epoch; clearInterval(this.timer);
     if (this.connection) send(this.connection, { type: 'leave' });
     this.connection?.close(); this.peer?.destroy();
-    this.connection = undefined; this.peer = undefined; this.clientId = ''; this.code = ''; this.welcomed = false;
+    this.connection = undefined; this.peer = undefined; this.clientId = ''; this.code = ''; this.welcomed = false; this.connecting = false;
     this.snapshot = { ...emptyGuest(), status, error }; this.emit();
   }
 }
